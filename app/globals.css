@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────
+   Thriv Design Tokens — extracted from reference
+   ───────────────────────────────────────────── */
+@theme {
+  /* Colors */
+  --color-page:        #F5F3F0;
+  --color-card:        #EDEBE8;
+  --color-card-inner:  #FFFFFF;
+  --color-black:       #111111;
+  --color-muted:       #9A9A9A;
+  --color-body:        #444444;
+  --color-border:      #E2E0DC;
+  --color-badge-promo-bg:   #E8F0E0;
+  --color-badge-promo-text: #3A6B35;
+  --color-badge-sold-bg:    #F5E6E6;
+  --color-badge-sold-text:  #8B2020;
+  --color-badge-premium-bg: #EDE9E0;
+  --color-badge-premium-text: #5A4A2F;
+  --color-badge-excellent-bg: #E6EDF5;
+  --color-badge-excellent-text: #1E3A5F;
+  --color-badge-verygood-bg: #EAF0EA;
+  --color-badge-verygood-text: #2E5E2E;
+
+  /* Border radius */
+  --radius-hero:   20px;
+  --radius-card:   16px;
+  --radius-pill:   9999px;
+  --radius-chip:   9999px;
+  --radius-badge:  9999px;
+  --radius-sm:     8px;
+
+  /* Shadows */
+  --shadow-card:   0 2px 12px rgba(0,0,0,0.07);
+  --shadow-btn:    0 1px 4px rgba(0,0,0,0.12);
+  --shadow-hero:   0 4px 24px rgba(0,0,0,0.10);
+
+  /* Font */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Spacing scale additions */
+  --spacing-18: 4.5rem;
+}
+
+/* Base reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-page);
+  color: var(--color-black);
+  font-family: var(--font-sans);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Scroll snap utility */
+.snap-x-mandatory {
+  scroll-snap-type: x mandatory;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.snap-x-mandatory::-webkit-scrollbar {
+  display: none;
+}
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-black);
+  outline-offset: 2px;
+}
