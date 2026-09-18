@@ -19,7 +19,7 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
   },
   {
     q: 'What sizes are available for graphic tees?',
-    a: 'All five anime graphic tee designs are available in S, M, L, and XL. These are oversized/boxy streetwear fits — they are intended to fit large. If you are between sizes, size down. Chest and shoulder measurements for size L are listed on each product page.',
+    a: 'All four anime graphic tee designs are available in S, M, L, and XL. These are oversized/boxy streetwear fits — they are intended to fit large. If you are between sizes, size down. Chest and shoulder measurements for size L are listed on each product page.',
   },
   {
     q: 'How long does delivery take?',

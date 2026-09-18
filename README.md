@@ -9,7 +9,7 @@
 Thriv is a Karachi-based curated thrift store specializing in 1-of-1 branded denim and an exclusive in-house anime graphic tee merch line.
 
 * **1-of-1 Thrift Domain Rule**: Every thrift piece is an authentic one-of-one item with a single fixed size and a stock of exactly 1. There are no restocks, and quantities cannot exceed 1.
-* **In-House Merch**: Heavyweight 240 GSM combed cotton anime tees (Akira, Evangelion, Berserk, Cowboy Bebop, Ghost in the Shell) with multi-size selection (S, M, L, XL) and batch stock.
+* **In-House Merch**: Heavyweight 240 GSM combed cotton anime tees (Akira, Evangelion, Berserk, Cowboy Bebop) with multi-size selection (S, M, L, XL) and batch stock.
 * **Condition Grading**: Exactly 3 condition grades: `Premium`, `Excellent`, `Very Good`.
 * **Nationwide Flat Delivery**: Flat Rs 200 delivery fee anywhere across Pakistan.
 * **Payment Methods**: Cash on Delivery, Bank Transfer, EasyPaisa, JazzCash, Card.

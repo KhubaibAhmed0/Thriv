@@ -21,7 +21,7 @@ const slides = [
     overline: 'In-House Merch — Now Live',
     headline: 'Anime Graphic\nTees Are Here.',
     italic: 'Tees Are Here.',
-    sub: 'Akira, Evangelion, Berserk, Cowboy Bebop, Ghost in the Shell. 240 GSM screenprinted. Sizes S to XL.',
+    sub: 'Akira, Evangelion, Berserk, Cowboy Bebop. 240 GSM screenprinted. Sizes S to XL.',
     tags: ['Heavyweight 240 GSM', 'S–XL Sizes'],
     cta: { label: 'Shop Anime Tees', href: '/shop?category=graphic-tees' },
     bg: 'linear-gradient(145deg, #0F1923 0%, #1A2835 55%, #212F3E 100%)',

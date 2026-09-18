@@ -116,7 +116,7 @@ export default function HomePage() {
                 Anime Heavyweight<br />Graphic Tees
               </h3>
               <p className="text-xs text-white/65 mt-2 max-w-xs">
-                Akira, Evangelion, Berserk, Cowboy Bebop, Ghost in the Shell. 240 GSM screenprinted. Multiple sizes.
+                Akira, Evangelion, Berserk, Cowboy Bebop. 240 GSM screenprinted. Multiple sizes.
               </p>
             </div>
             <div className="flex items-center justify-between mt-4">

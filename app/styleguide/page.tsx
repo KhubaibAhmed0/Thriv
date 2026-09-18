@@ -81,7 +81,7 @@ export default function StyleguidePage() {
             ✓ formatPrice: {formatPrice(1299)} · {formatPrice(999)} · {formatPrice(2499)}
           </span>
           <span className="inline-flex items-center gap-1.5 bg-white border border-[#E2E0DC] text-[#111111] text-xs font-medium px-3 py-1.5 rounded-full">
-            ✓ Total Seed Items: {products.length} (28 Thrift Jeans + 5 Anime Tees)
+            ✓ Total Seed Items: {products.length} (28 Thrift Jeans + 4 Anime Tees)
           </span>
         </div>
       </div>

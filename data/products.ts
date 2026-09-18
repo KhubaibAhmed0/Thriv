@@ -781,29 +781,6 @@ export const products: Product[] = [
     },
     colors: ['#F3EFE6', '#1E293B'],
   },
-  {
-    id: 'thriv-tee-005',
-    slug: 'ghost-in-the-shell-cyberbrain-tee',
-    name: 'Ghost in the Shell Section 9 Graphic Tee',
-    brand: 'Thriv',
-    category: 'graphic-tees',
-    gender: 'unisex',
-    subcategory: 'anime-tees',
-    price: 1599,
-    condition: 'Premium',
-    isMerch: true,
-    size: null,
-    sizes: ['S', 'M', 'L', 'XL'],
-    stock: 20,
-    images: ['/products/ghost-in-the-shell-cyberbrain-tee-1.jpg'],
-    description: 'Oversized silhouette in deep forest olive featuring Motoko Kusanagi cyberbrain cable artwork across the reverse backplate. Subtle chest emblem in muted reflective screenprint.',
-    measurements: {
-      chest: '47 in (L)',
-      length: '29.5 in (L)',
-      shoulders: '21.5 in (L)',
-    },
-    colors: ['#232B25', '#10B981'],
-  },
 ];
 
 export function getProductBySlug(slug: string): Product | undefined {

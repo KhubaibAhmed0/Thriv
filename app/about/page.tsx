@@ -115,7 +115,7 @@ export default function AboutPage() {
           </div>
           <div className="space-y-4 text-sm text-[#444444] leading-relaxed">
             <p>
-              The anime tee line is Thriv&apos;s first in-house product. Five designs — Akira, Evangelion, Berserk, Cowboy Bebop, Ghost in the Shell — on 240 GSM combed cotton. Boxy streetwear fits, heavy enough that they don&apos;t go transparent, pre-shrunk so the size you order is the size you wear.
+              The anime tee line is Thriv&apos;s first in-house product. Four designs — Akira, Evangelion, Berserk, Cowboy Bebop — on 240 GSM combed cotton. Boxy streetwear fits, heavy enough that they don&apos;t go transparent, pre-shrunk so the size you order is the size you wear.
             </p>
             <p>
               Unlike thrift pieces, the graphic tees come in multiple sizes (S, M, L, XL) with real batch stock. You can order multiples if needed. They are produced in limited runs, so availability is not guaranteed long-term.
