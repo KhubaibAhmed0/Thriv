@@ -164,7 +164,7 @@ export default function AboutPage() {
             Browse the Collection <ArrowRight className="w-4 h-4" />
           </Link>
           <p className="text-xs text-[#9A9A9A] mt-4">
-            Have a question? <a href="https://wa.me/923001234567" target="_blank" rel="noopener noreferrer" className="text-[#111111] font-semibold hover:underline">Chat on WhatsApp →</a>
+            Have a question? <a href="https://wa.me/923248188616" target="_blank" rel="noopener noreferrer" className="text-[#111111] font-semibold hover:underline">Chat on WhatsApp (0324-8188616) →</a>
           </p>
         </div>
 

@@ -340,15 +340,27 @@ export function CheckoutForm() {
               {/* Account details panel for bank/mobile wallets */}
               {showAccountDetails && (
                 <div className="mt-4 p-4 bg-white rounded-[14px] border border-[#E2E0DC]">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#9A9A9A] mb-2">
-                    Account Details — {paymentMethod === 'bank-transfer' ? 'Bank Transfer' : paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#9A9A9A] mb-2.5">
+                    Account Details — {paymentMethod === 'bank-transfer' ? 'Faysal Bank' : paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}
                   </p>
-                  <div className="space-y-1.5 text-xs text-[#444444]">
-                    <p className="font-mono text-[#9A9A9A] italic">[ACCOUNT DETAILS PENDING]</p>
-                    <p className="text-[#9A9A9A]">
-                      After placing your order, send the payment screenshot to our WhatsApp number with your order number as reference.
-                    </p>
-                  </div>
+                  
+                  {paymentMethod === 'bank-transfer' ? (
+                    <div className="space-y-1.5 text-xs text-[#111111] bg-[#F5F3F0] p-3 rounded-[10px] border border-[#E2E0DC]">
+                      <p><span className="text-[#9A9A9A]">Bank:</span> <strong className="font-semibold">Faysal Bank</strong></p>
+                      <p><span className="text-[#9A9A9A]">Account Title:</span> <strong className="font-semibold">HASSAN RAZA</strong></p>
+                      <p><span className="text-[#9A9A9A]">IBAN:</span> <strong className="font-mono select-all">PK05FAYS3605301000003020</strong></p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 text-xs text-[#111111] bg-[#F5F3F0] p-3 rounded-[10px] border border-[#E2E0DC]">
+                      <p><span className="text-[#9A9A9A]">Provider:</span> <strong className="font-semibold">{paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}</strong></p>
+                      <p><span className="text-[#9A9A9A]">Account Title:</span> <strong className="font-semibold">HASSAN RAZA</strong></p>
+                      <p><span className="text-[#9A9A9A]">Account / Mobile:</span> <strong className="font-mono select-all">0324-8188616</strong></p>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-[#444444] mt-3 leading-relaxed">
+                    After placing your order, send the payment screenshot on WhatsApp to <strong>0324-8188616</strong> with your order number as reference.
+                  </p>
                 </div>
               )}
             </div>

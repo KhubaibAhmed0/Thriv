@@ -161,7 +161,7 @@ export default function FAQPage() {
           <p className="text-sm text-[#444444] mb-4">Still have a question?</p>
           <div className="flex flex-wrap justify-center gap-3">
             <a
-              href="https://wa.me/923001234567?text=Hi+Thriv!+I+have+a+question."
+              href="https://wa.me/923248188616?text=Hi+Thriv!+I+have+a+question."
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-[#111111] text-white font-bold text-sm px-6 py-3 rounded-full hover:bg-black transition-colors"

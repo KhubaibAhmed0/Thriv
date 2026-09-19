@@ -52,7 +52,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
     }
   }, [orderNumber]);
 
-  const whatsappNumber = '923001234567';
+  const whatsappNumber = '923248188616';
   const whatsappMessage = encodeURIComponent(
     `Hi Thriv! I just placed an order. My order number is ${orderNumber}. Please confirm.`
   );
@@ -126,8 +126,22 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
                 <p className="text-xs text-[#444444] mt-0.5 leading-relaxed">
                   Transfer{' '}
                   <strong>{order ? formatPrice(order.total) : 'your total'}</strong> via{' '}
-                  {PAYMENT_LABELS[order?.paymentMethod ?? ''] ?? 'your chosen method'} and share the screenshot on WhatsApp with your order number.
+                  {PAYMENT_LABELS[order?.paymentMethod ?? ''] ?? 'your chosen method'} and share the screenshot on WhatsApp (<strong>0324-8188616</strong>) with your order number.
                 </p>
+                {order?.paymentMethod === 'bank-transfer' && (
+                  <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
+                    <p className="font-bold text-[#111111]">Faysal Bank</p>
+                    <p className="text-[#444444]">Title: <span className="font-semibold text-[#111111]">HASSAN RAZA</span></p>
+                    <p className="font-mono text-[#111111] select-all">IBAN: PK05FAYS3605301000003020</p>
+                  </div>
+                )}
+                {(order?.paymentMethod === 'easypaisa' || order?.paymentMethod === 'jazzcash') && (
+                  <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
+                    <p className="font-bold text-[#111111]">{PAYMENT_LABELS[order.paymentMethod]}</p>
+                    <p className="text-[#444444]">Title: <span className="font-semibold text-[#111111]">HASSAN RAZA</span></p>
+                    <p className="font-mono text-[#111111] select-all">Account: 0324-8188616</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

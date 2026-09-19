@@ -4,7 +4,7 @@ import React from 'react';
 import { MessageCircle } from 'lucide-react';
 
 export function WhatsAppFAB() {
-  const whatsappNumber = '923001234567'; // Configured placeholder from assumptions
+  const whatsappNumber = '923248188616'; // Client official WhatsApp
   const defaultText = encodeURIComponent('Hello Thriv! I have a question about an item.');
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${defaultText}`;
 
