@@ -120,6 +120,11 @@ export function Footer() {
                   Design Styleguide
                 </Link>
               </li>
+              <li>
+                <Link href="/admin" className="hover:text-[#111111] transition-colors text-xs text-[#9A9A9A]">
+                  Admin Portal
+                </Link>
+              </li>
             </ul>
           </div>
 

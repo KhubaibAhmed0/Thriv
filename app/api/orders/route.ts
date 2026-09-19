@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { CartItem } from '@/types';
+import { createOrderInSupabase } from '@/lib/supabase';
 
 // ── Zod Validation Schema ─────────────────────────────────────────────
 const OrderRequestSchema = z.object({
@@ -134,11 +135,20 @@ export async function POST(req: NextRequest) {
     // Stub: integrate with WhatsApp Business API or Twilio for WhatsApp
     // await sendWhatsAppConfirmation({ to: order.whatsapp, order });
 
-    // ── TODO: Persist order to database ────────────────────────────
-    // Stub: e.g. Supabase, PlanetScale, or Google Sheets via API
-    // await db.orders.create({ data: order });
+    // ── Persist order to Supabase Database ────────────────────────
+    const dbResult = await createOrderInSupabase(order);
+    if (!dbResult.success) {
+      console.warn('[/api/orders] Supabase persist note:', dbResult.error);
+    }
 
-    return NextResponse.json(order, { status: 201 });
+    return NextResponse.json(
+      {
+        ...order,
+        id: dbResult.id || undefined,
+        dbSaved: dbResult.success,
+      },
+      { status: 201 }
+    );
   } catch (err) {
     console.error('[/api/orders] Error:', err);
     return NextResponse.json(
