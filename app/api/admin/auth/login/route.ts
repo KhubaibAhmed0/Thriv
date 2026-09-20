@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 
-// Version 1.0.1 - project env vars linked
+// Version 1.0.2 - updated supabase project url
 
 const LoginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
