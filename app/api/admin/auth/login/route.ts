@@ -35,8 +35,13 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_KEY;
 
     if (!supabaseUrl || !anonKey) {
+      const missing: string[] = [];
+      if (!supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+      if (!anonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
       return NextResponse.json(
-        { error: 'Supabase credentials are not configured on the server.' },
+        {
+          error: `Supabase credentials are not configured on the server. Missing: ${missing.join(', ')}`,
+        },
         { status: 503 }
       );
     }
