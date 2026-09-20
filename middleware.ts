@@ -11,8 +11,12 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get('thriv_admin_token')?.value;
   const isLoginPage = pathname === '/admin/login';
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_KEY;
 
   // If Supabase is not configured yet (local stub mode)
   if (!supabaseUrl || !anonKey || !supabaseUrl.startsWith('https://')) {
