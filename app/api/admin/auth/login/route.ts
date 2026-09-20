@@ -79,10 +79,20 @@ export async function POST(req: NextRequest) {
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (adminError || !adminRow) {
-        // Sign out / reject access
+      if (adminError) {
+        console.error('[/api/admin/auth/login] adminError:', adminError);
         return NextResponse.json(
-          { error: 'Not authorised: This account does not have admin privileges.' },
+          { error: `Database error verifying admin privileges: ${adminError.message}` },
+          { status: 500 }
+        );
+      }
+
+      if (!adminRow) {
+        return NextResponse.json(
+          {
+            error: `Not authorised: User ID '${userId}' (${email}) is not registered in the 'public.admins' table.`,
+            userId,
+          },
           { status: 403 }
         );
       }
