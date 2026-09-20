@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     if (authError || !authData.user || !authData.session) {
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: authError?.message || 'Invalid email or password' },
         { status: 401 }
       );
     }
