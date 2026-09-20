@@ -29,12 +29,15 @@ export async function POST(req: NextRequest) {
 
     const { email, password } = parsed.data;
 
-    const supabaseUrl =
+    const rawUrl =
       process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const anonKey =
+    const rawKey =
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
       process.env.SUPABASE_ANON_KEY ||
       process.env.SUPABASE_KEY;
+
+    const supabaseUrl = rawUrl?.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
+    const anonKey = rawKey?.trim();
 
     if (!supabaseUrl || !anonKey) {
       const missing: string[] = [];

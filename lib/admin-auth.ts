@@ -14,8 +14,11 @@ export async function verifyAdminRequest(req: NextRequest): Promise<{
     return { authorized: false };
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  const supabaseUrl = rawUrl?.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
+  const anonKey = rawKey?.trim();
 
   if (!supabaseUrl || !anonKey) {
     // Unconfigured offline fallback: allow if local dev

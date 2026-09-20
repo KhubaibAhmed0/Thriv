@@ -18,10 +18,13 @@ let _serviceClient: SupabaseClient | null = null;
 export function getServiceClient(): SupabaseClient {
   if (_serviceClient) return _serviceClient;
 
-  const url =
+  const rawUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key =
+  const rawKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+  const url = rawUrl?.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
+  const key = rawKey?.trim();
 
   if (!url || !key) {
     throw new Error(
