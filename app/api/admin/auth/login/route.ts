@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 
+// Version 1.0.1 - project env vars linked
+
 const LoginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
