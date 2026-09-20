@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import AdminDashboardClient from '@/components/AdminDashboardClient';
+import AdminOrdersListClient from '@/components/admin/AdminOrdersListClient';
 
 export const metadata: Metadata = {
-  title: 'Thriv Admin Portal — Order Management & Dispatch',
-  description: 'Manage customer orders, update dispatch status, and send 1-click WhatsApp confirmations.',
+  title: 'Orders — Thriv Admin',
+  description: 'Manage incoming customer orders and dispatch status.',
   robots: {
     index: false,
     follow: false,
@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
-  return <AdminDashboardClient />;
+  return <AdminOrdersListClient />;
 }

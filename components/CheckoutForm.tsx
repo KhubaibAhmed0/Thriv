@@ -62,6 +62,9 @@ export function CheckoutForm() {
   const { cart, subtotal, deliveryFee, total, clearCart } = useCart();
   const { items } = cart;
 
+  // Generated once on mount; prevents double-submit from creating two orders.
+  const [idempotencyKey] = useState<string>(() => crypto.randomUUID());
+
   const [formData, setFormData] = useState<FormData>({
     customerName: '',
     whatsapp: '',
@@ -86,7 +89,6 @@ export function CheckoutForm() {
 
   const setField = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error on change
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -127,21 +129,35 @@ export function CheckoutForm() {
     setIsSubmitting(true);
 
     try {
+      // Build the payload the new API expects.
+      // Client prices are intentionally excluded — server recomputes them.
+      const orderPayload = {
+        idempotency_key:      idempotencyKey,
+        customer_name:        formData.customerName,
+        customer_phone:       formData.whatsapp,
+        customer_email:       formData.email,
+        address_line:         formData.address,
+        city:                 formData.city,
+        province:             formData.province,
+        notes:                formData.notes || null,
+        payment_method:       paymentMethod,
+        agreed_to_final_sale: agreedToFinalSale,
+        items: items.map((item) => ({
+          product_slug:  item.product.slug,
+          quantity:      item.quantity,
+          selected_size: item.selectedSize ?? null,
+        })),
+      };
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          paymentMethod,
-          items,
-          agreedToFinalSale,
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Surface field-level validation errors from server
         if (data.issues) {
           const serverErrors: FormErrors = {};
           Object.entries(data.issues).forEach(([key, msgs]) => {
@@ -154,18 +170,18 @@ export function CheckoutForm() {
         return;
       }
 
-      // Success: persist order to localStorage for confirmation page
+      const orderNumber: string = data.order_number;
       try {
-        localStorage.setItem(`thriv_order_${data.orderNumber}`, JSON.stringify(data));
+        localStorage.setItem(
+          `thriv_order_${orderNumber}`,
+          JSON.stringify({ order_number: orderNumber, total_pkr: data.total_pkr })
+        );
       } catch {
-        // localStorage write failure is non-fatal
+        // non-fatal
       }
 
-      // Clear cart
       clearCart();
-
-      // Redirect to confirmation
-      router.push(`/order/${data.orderNumber}`);
+      router.push(`/order/${orderNumber}`);
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
       setIsSubmitting(false);
