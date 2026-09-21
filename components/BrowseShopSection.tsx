@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import type { Product } from '@/types';
 import { ProductCard } from '@/components/ProductCard';
 
@@ -21,17 +23,24 @@ type TabId = typeof TABS[number]['id'];
 export function BrowseShopSection({ products, featuredMerch }: BrowseShopSectionProps) {
   const [activeTab, setActiveTab] = useState<TabId>('all');
 
-  const displayProducts = React.useMemo(() => {
+  const displayProducts = useMemo(() => {
     if (activeTab === 'featured') {
-      return products.filter((p) => p.isFeatured).slice(0, 8);
+      return products.filter((p) => p.isFeatured).slice(0, 4);
     }
     if (activeTab === 'all') {
       const others = products.filter((p) => p.id !== featuredMerch?.id);
       const combined = featuredMerch ? [featuredMerch, ...others] : others;
-      return combined.slice(0, 8);
+      return combined.slice(0, 4);
     }
-    return products.filter((p) => p.category === activeTab).slice(0, 8);
+    return products.filter((p) => p.category === activeTab).slice(0, 4);
   }, [products, featuredMerch, activeTab]);
+
+  const shopMoreHref = useMemo(() => {
+    if (activeTab === 'jeans') return '/shop?category=jeans';
+    if (activeTab === 'graphic-tees') return '/shop?category=graphic-tees';
+    if (activeTab === 'featured') return '/shop?sort=newest';
+    return '/shop';
+  }, [activeTab]);
 
   return (
     <div>
@@ -55,8 +64,8 @@ export function BrowseShopSection({ products, featuredMerch }: BrowseShopSection
         ))}
       </div>
 
-      {/* Grid: 2 cols on mobile, 3 cols on tablet, 4 cols on desktop — uniform ProductCard layout */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+      {/* Grid: 2 cols on mobile, 4 cols on desktop — 4 uniform cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
         {displayProducts.map((product, idx) => (
           <ProductCard
             key={product.id}
@@ -64,6 +73,16 @@ export function BrowseShopSection({ products, featuredMerch }: BrowseShopSection
             priority={idx < 4}
           />
         ))}
+      </div>
+
+      {/* Shop More Button */}
+      <div className="mt-8 text-center">
+        <Link
+          href={shopMoreHref}
+          className="inline-flex items-center justify-center gap-2 bg-[#111111] text-white hover:bg-black font-bold text-xs sm:text-sm px-8 py-3.5 rounded-full transition-all shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-95 cursor-pointer"
+        >
+          Shop More <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ import { products } from '@/data/products';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { BrowseShopSection } from '@/components/BrowseShopSection';
 import { YouMayAlsoLikeRow } from '@/components/YouMayAlsoLikeRow';
-import { ShopTheLook } from '@/components/ShopTheLook';
 import {
   Sparkles,
   ShieldCheck,
@@ -17,11 +16,6 @@ export const metadata = {
   description:
     'One-of-one branded denim from Zara, Bershka, Calvin Klein, H&M, Old Navy — handpicked, disinfected, and shipped flat Rs 200 nationwide. Plus in-house anime graphic tees.',
 };
-
-// Pre-select fixed sets so the server render is deterministic
-const shopTheLookItems = products
-  .filter((p) => !p.isMerch && p.stock > 0)
-  .slice(0, 3);
 
 const featuredMerch = products.find((p) => p.isMerch && p.isFeatured);
 
@@ -53,14 +47,6 @@ export default function HomePage() {
           </Link>
         </div>
         <BrowseShopSection products={products} featuredMerch={featuredMerch ?? null} />
-        <div className="mt-6 text-center sm:hidden">
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#111111] bg-white border border-[#E2E0DC] px-5 py-2.5 rounded-full"
-          >
-            View All Pieces <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
       </section>
 
       {/* ── Section 5: Promo Banner Row ── */}
@@ -129,23 +115,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Section 6: Shop The Look ── */}
-      <section
-        aria-label="Shop the Look"
-        className="px-4 sm:px-6 lg:px-8 pb-8 max-w-7xl mx-auto"
-      >
-        <div className="mb-4">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight">
-            Shop The Look
-          </h2>
-          <p className="text-sm text-[#444444] mt-1">
-            Real pieces, real sizing. Each linked product is 1-of-1 and ships flat Rs 200.
-          </p>
-        </div>
-        <ShopTheLook items={shopTheLookItems} title="Items In This Look" />
-      </section>
-
-      {/* ── Section 7: Full-Width Lifestyle Banner ── */}
+      {/* ── Section 6: Full-Width Lifestyle Banner ── */}
       <section
         aria-label="Streetwear banner"
         className="px-4 sm:px-6 lg:px-8 pb-12 max-w-7xl mx-auto"
