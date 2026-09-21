@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
@@ -64,6 +64,7 @@ export function CheckoutForm() {
 
   // Generated once on mount; prevents double-submit from creating two orders.
   const [idempotencyKey] = useState<string>(() => crypto.randomUUID());
+  const isOrderPlacedRef = useRef(false);
 
   const [formData, setFormData] = useState<FormData>({
     customerName: '',
@@ -80,9 +81,9 @@ export function CheckoutForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Redirect to cart if cart is empty
+  // Redirect to cart if cart is empty and order hasn't just been placed
   useEffect(() => {
-    if (items.length === 0) {
+    if (!isOrderPlacedRef.current && items.length === 0) {
       router.replace('/cart');
     }
   }, [items.length, router]);
@@ -171,24 +172,50 @@ export function CheckoutForm() {
       }
 
       const orderNumber: string = data.order_number;
+      isOrderPlacedRef.current = true;
+
+      const orderData = {
+        orderNumber,
+        customerName: formData.customerName,
+        whatsapp: formData.whatsapp,
+        email: formData.email,
+        address: formData.address,
+        city: formData.city,
+        province: formData.province,
+        paymentMethod,
+        items: [...items],
+        subtotal,
+        deliveryFee,
+        total: data.total_pkr || total,
+        createdAt: new Date().toISOString(),
+        notes: formData.notes || undefined,
+      };
+
       try {
-        localStorage.setItem(
-          `thriv_order_${orderNumber}`,
-          JSON.stringify({ order_number: orderNumber, total_pkr: data.total_pkr })
-        );
+        localStorage.setItem(`thriv_order_${orderNumber}`, JSON.stringify(orderData));
       } catch {
         // non-fatal
       }
 
       clearCart();
-      router.push(`/order/${orderNumber}`);
+      router.replace(`/order/${orderNumber}`);
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
       setIsSubmitting(false);
     }
   };
 
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    if (isOrderPlacedRef.current) {
+      return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-[#444444]">Placing your order and generating receipt...</p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   const showAccountDetails = ['bank-transfer', 'easypaisa', 'jazzcash'].includes(paymentMethod);
 
