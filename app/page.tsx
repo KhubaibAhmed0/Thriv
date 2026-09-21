@@ -4,7 +4,6 @@ import { HeroCarousel } from '@/components/HeroCarousel';
 import { BrowseShopSection } from '@/components/BrowseShopSection';
 import { YouMayAlsoLikeRow } from '@/components/YouMayAlsoLikeRow';
 import { ShopTheLook } from '@/components/ShopTheLook';
-import { CategoryFilterRow } from '@/components/CategoryFilterRow';
 import {
   Sparkles,
   ShieldCheck,
@@ -12,8 +11,6 @@ import {
   Package,
   ArrowRight,
 } from 'lucide-react';
-
-import { Suspense } from 'react';
 
 export const metadata = {
   title: 'thriv — Curated Thrift Jeans & Anime Graphic Tees · Pakistan',
@@ -31,11 +28,6 @@ const featuredMerch = products.find((p) => p.isMerch && p.isFeatured);
 export default function HomePage() {
   return (
     <main className="bg-[#F5F3F0] overflow-x-hidden">
-
-      {/* ── Section 2: Category Filter Pill Row ── */}
-      <Suspense fallback={<div className="h-14 bg-transparent" />}>
-        <CategoryFilterRow interactive />
-      </Suspense>
 
       {/* ── Section 3: Hero ── */}
       <section aria-label="Hero" className="px-4 sm:px-6 lg:px-8 pt-6 pb-4 max-w-7xl mx-auto">

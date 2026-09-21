@@ -29,10 +29,10 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 bg-[#F5F3F0]/95 backdrop-blur-md border-b border-[#E2E0DC]/60 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           
-          {/* Left: Mobile menu toggle + Desktop Nav links */}
-          <div className="flex items-center gap-6">
+          {/* Left: Mobile menu toggle button */}
+          <div className="flex items-center md:flex-1">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -45,36 +45,9 @@ export function Header() {
                 <Menu className="w-5 h-5 stroke-[1.75]" />
               )}
             </button>
-
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-[#444444]">
-              <Link
-                href="/shop"
-                className="hover:text-[#111111] transition-colors"
-              >
-                Shop
-              </Link>
-              <Link
-                href="/about"
-                className="hover:text-[#111111] transition-colors"
-              >
-                About
-              </Link>
-              <Link
-                href="/faq"
-                className="hover:text-[#111111] transition-colors"
-              >
-                FAQs
-              </Link>
-              <Link
-                href="/styleguide"
-                className="text-xs text-[#9A9A9A] hover:text-[#111111] px-2 py-0.5 rounded-full border border-[#E2E0DC] transition-colors"
-              >
-                Styleguide
-              </Link>
-            </nav>
           </div>
 
-          {/* Center: Wordmark "thriv" (replacing reference "F fashion") */}
+          {/* Center: Wordmark "thriv.pk" */}
           <div className="flex items-center justify-center">
             <Link
               href="/"
@@ -85,7 +58,7 @@ export function Header() {
           </div>
 
           {/* Right: Search Pill & Cart */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-end md:flex-1 gap-2 sm:gap-3">
             {/* Search form for desktop / toggle on mobile */}
             <form onSubmit={handleSearchSubmit} className="relative hidden sm:block">
               <input
@@ -129,6 +102,34 @@ export function Header() {
             </Link>
           </div>
         </div>
+
+        {/* Desktop Centered Navigation Bar (Shop, FAQs, About, Contact) */}
+        <nav className="hidden md:flex items-center justify-center gap-8 pb-3 pt-0.5 text-xs sm:text-sm font-semibold tracking-wide text-[#444444]">
+          <Link
+            href="/shop"
+            className="hover:text-[#111111] transition-colors py-1"
+          >
+            Shop
+          </Link>
+          <Link
+            href="/faq"
+            className="hover:text-[#111111] transition-colors py-1"
+          >
+            FAQs
+          </Link>
+          <Link
+            href="/about"
+            className="hover:text-[#111111] transition-colors py-1"
+          >
+            About
+          </Link>
+          <Link
+            href="/contact"
+            className="hover:text-[#111111] transition-colors py-1"
+          >
+            Contact
+          </Link>
+        </nav>
 
         {/* Mobile Search Input Drawer when toggled */}
         {showSearchInput && (
@@ -178,6 +179,13 @@ export function Header() {
             Graphic T-Shirts (In-House Merch)
           </Link>
           <Link
+            href="/faq"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-base font-medium text-[#444444] hover:text-[#111111] py-1.5"
+          >
+            Delivery & FAQs
+          </Link>
+          <Link
             href="/about"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-base font-medium text-[#444444] hover:text-[#111111] py-1.5"
@@ -185,21 +193,12 @@ export function Header() {
             About Thriv
           </Link>
           <Link
-            href="/faq"
+            href="/contact"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-base font-medium text-[#444444] hover:text-[#111111] py-1.5"
           >
-            Delivery & FAQs
+            Contact Us
           </Link>
-          <div className="pt-2 border-t border-[#E2E0DC]">
-            <Link
-              href="/styleguide"
-              onClick={() => setMobileMenuOpen(false)}
-              className="inline-block text-xs text-[#9A9A9A] hover:text-[#111111] py-1"
-            >
-              Phase 1 Design Styleguide →
-            </Link>
-          </div>
         </div>
       )}
     </header>

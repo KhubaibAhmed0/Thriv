@@ -124,8 +124,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/styleguide" className="hover:text-[#111111] transition-colors text-xs text-[#9A9A9A]">
-                  Design Styleguide
+                <Link href="/contact" className="hover:text-[#111111] transition-colors">
+                  Contact Us
                 </Link>
               </li>
               <li>
