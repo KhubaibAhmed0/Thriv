@@ -56,6 +56,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           slug={product.slug}
           brand={product.brand}
           subcategory={product.subcategory}
+          imageUrl={product.images?.[0]}
           aspectRatio="4:5"
           priority={priority}
           alt={product.name}

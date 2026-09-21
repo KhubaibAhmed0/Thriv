@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SlidersHorizontal, ArrowUpDown, X, Search, Sparkles } from 'lucide-react';
-import { products } from '@/data/products';
+import { products as initialProducts } from '@/data/products';
 import { ProductCard } from '@/components/ProductCard';
 import { CustomDropdown, type DropdownOption } from '@/components/ui/CustomDropdown';
-import type { Condition, Brand } from '@/types';
+import type { Condition, Brand, Product } from '@/types';
 
 const BRANDS: Brand[] = ['Zara', 'Bershka', 'Calvin Klein', 'H&M', 'Old Navy', 'Thriv'];
 const CONDITIONS: Condition[] = ['Premium', 'Excellent', 'Very Good'];
@@ -33,6 +33,18 @@ const sortOptions: DropdownOption[] = [
 export function ShopCatalog() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
+
+  useEffect(() => {
+    fetch('/api/products')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+          setAllProducts(data.products);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Read URL query params
   const activeCategory = searchParams.get('category') || 'all';
@@ -72,7 +84,7 @@ export function ShopCatalog() {
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    return products
+    return allProducts
       .filter((product) => {
         // Search query filter
         if (searchQuery) {
@@ -90,12 +102,8 @@ export function ShopCatalog() {
         }
 
         // Subcategory filter
-        if (activeSubcategory !== 'all') {
-          if (activeSubcategory === 'wide-leg') {
-            if (product.subcategory !== 'wide-leg' && product.subcategory !== 'baggy') return false;
-          } else if (product.subcategory !== activeSubcategory) {
-            return false;
-          }
+        if (activeSubcategory !== 'all' && product.subcategory !== activeSubcategory) {
+          return false;
         }
 
         // Brand filter
@@ -122,7 +130,7 @@ export function ShopCatalog() {
         if (!a.isFeatured && b.isFeatured) return 1;
         return 0;
       });
-  }, [activeCategory, activeSubcategory, activeBrand, activeCondition, activeSort, searchQuery]);
+  }, [allProducts, activeCategory, activeSubcategory, activeBrand, activeCondition, activeSort, searchQuery]);
 
   const hasActiveFilters =
     activeCategory !== 'all' ||

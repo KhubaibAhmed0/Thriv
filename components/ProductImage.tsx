@@ -14,6 +14,7 @@ interface ProductImageProps {
   alt?: string;
   className?: string;
   priority?: boolean;
+  imageUrl?: string;
 }
 
 // Deterministic hue from slug string — gives each product a distinct warm-neutral tint
@@ -50,9 +51,10 @@ export function ProductImage({
   alt,
   className = '',
   priority = false,
+  imageUrl,
 }: ProductImageProps) {
   const [imgError, setImgError] = useState(false);
-  const src = `/products/${slug}-${imageIndex}.jpg`;
+  const src = imageUrl || `/products/${slug}-${imageIndex}.jpg`;
 
   const hue = slugToHue(slug);
   const lightness = slugToLightness(slug);

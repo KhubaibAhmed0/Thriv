@@ -95,6 +95,7 @@ export function ProductDetailClient({
               slug={product.slug}
               brand={product.brand}
               subcategory={product.subcategory}
+              imageUrl={product.images?.[0]}
               aspectRatio="4:5"
               priority
               alt={product.name}

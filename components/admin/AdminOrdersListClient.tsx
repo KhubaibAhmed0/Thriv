@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { AdminNavHeader } from '@/components/admin/AdminNavHeader';
 import {
   Search,
   RefreshCw,
@@ -321,51 +322,34 @@ export default function AdminOrdersListClient() {
 
   return (
     <div className="min-h-screen bg-[#111111] text-white">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-[#161616] border-b border-[#242424] px-4 py-3 sm:px-6">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white">
-                Orders
-              </h1>
-              <span className="text-xs bg-[#242424] text-neutral-400 font-mono px-2 py-0.5 rounded-full">
-                {filteredOrders.length}
-              </span>
-              {newOrdersCount > 0 && (
-                <span className="text-[11px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold px-2 py-0.5 rounded-full animate-pulse">
-                  +{newOrdersCount} new
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-neutral-400">Thriv Karachi Dispatch</p>
-          </div>
+      {/* Shared Admin Navigation Header with Orders & Inventory Tabs */}
+      <AdminNavHeader
+        onRefresh={() => {
+          setNewOrdersCount(0);
+          fetchOrders();
+        }}
+        loading={loading}
+      />
 
+      {/* Subheader Title */}
+      <div className="bg-[#161616] border-b border-[#242424] px-4 py-3 sm:px-6">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setNewOrdersCount(0);
-                fetchOrders();
-              }}
-              disabled={loading}
-              title="Refresh orders"
-              aria-label="Refresh orders"
-              className="p-2 text-neutral-400 hover:text-white bg-[#202020] hover:bg-[#282828] border border-[#2e2e2e] rounded-[10px] transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              onClick={handleSignOut}
-              title="Sign out"
-              aria-label="Sign out"
-              className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white bg-[#202020] hover:bg-[#282828] border border-[#2e2e2e] px-3 py-2 rounded-[10px] transition-colors cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
+            <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white">
+              Customer Orders
+            </h1>
+            <span className="text-xs bg-[#242424] text-neutral-400 font-mono px-2 py-0.5 rounded-full">
+              {filteredOrders.length}
+            </span>
+            {newOrdersCount > 0 && (
+              <span className="text-[11px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold px-2 py-0.5 rounded-full animate-pulse">
+                +{newOrdersCount} new
+              </span>
+            )}
           </div>
+          <p className="text-[11px] text-neutral-400">Thriv Karachi Dispatch</p>
         </div>
-      </header>
+      </div>
 
       {/* Realtime Toast Notification */}
       {realtimeToast && (
