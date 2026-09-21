@@ -17,6 +17,7 @@ import {
   Scissors,
 } from 'lucide-react';
 import { AdminNavHeader } from '@/components/admin/AdminNavHeader';
+import { AdminDropdown } from '@/components/admin/AdminDropdown';
 
 const KNOWN_BRANDS = ['Zara', 'Bershka', 'Calvin Klein', 'H&M', 'Old Navy', 'Thriv'];
 const JEAN_SUBCATEGORIES = [
@@ -28,6 +29,22 @@ const JEAN_SUBCATEGORIES = [
   'cargo-denim',
 ];
 const TEE_SUBCATEGORIES = ['anime-tees', 'oversized-tees'];
+
+const CATEGORY_OPTIONS = [
+  { value: 'jeans', label: 'Curated Jeans (Thrift 1-of-1)' },
+  { value: 'graphic-tees', label: 'Graphic T-Shirts (Merch)' },
+];
+
+const BRAND_OPTIONS = [
+  ...KNOWN_BRANDS.map((b) => ({ value: b, label: b })),
+  { value: 'other', label: 'Other / Custom Brand' },
+];
+
+const CONDITION_OPTIONS = [
+  { value: 'Premium', label: 'Premium', sublabel: 'Near-new / pristine', dotColor: '#5A4A2F' },
+  { value: 'Excellent', label: 'Excellent', sublabel: 'Minimal wear', dotColor: '#1E3A5F' },
+  { value: 'Very Good', label: 'Very Good', sublabel: 'Authentic vintage character', dotColor: '#2E5E2E' },
+];
 
 export function AddProductForm() {
   const router = useRouter();
@@ -356,35 +373,29 @@ export function AddProductForm() {
                   <label className="block text-xs font-semibold text-neutral-300 mb-1.5">
                     Category *
                   </label>
-                  <select
+                  <AdminDropdown
+                    options={CATEGORY_OPTIONS}
                     value={category}
-                    onChange={(e) => {
-                      const cat = e.target.value as 'jeans' | 'graphic-tees';
+                    onChange={(val) => {
+                      const cat = val as 'jeans' | 'graphic-tees';
                       setCategory(cat);
                       setSubcategory(cat === 'jeans' ? 'wide-leg' : 'anime-tees');
                     }}
-                    className="w-full bg-[#202020] border border-[#303030] rounded-[12px] px-3.5 py-2.5 text-sm text-white outline-none focus:border-neutral-400 transition-colors cursor-pointer"
-                  >
-                    <option value="jeans">Curated Jeans (Thrift 1-of-1)</option>
-                    <option value="graphic-tees">Graphic T-Shirts (Merch)</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-neutral-300 mb-1.5">
                     Style / Fit *
                   </label>
-                  <select
+                  <AdminDropdown
+                    options={(category === 'jeans' ? JEAN_SUBCATEGORIES : TEE_SUBCATEGORIES).map((sub) => ({
+                      value: sub,
+                      label: sub.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+                    }))}
                     value={subcategory}
-                    onChange={(e) => setSubcategory(e.target.value)}
-                    className="w-full bg-[#202020] border border-[#303030] rounded-[12px] px-3.5 py-2.5 text-sm text-white outline-none focus:border-neutral-400 transition-colors cursor-pointer"
-                  >
-                    {(category === 'jeans' ? JEAN_SUBCATEGORIES : TEE_SUBCATEGORIES).map((sub) => (
-                      <option key={sub} value={sub}>
-                        {sub.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setSubcategory(val)}
+                  />
                 </div>
               </div>
 
@@ -394,16 +405,11 @@ export function AddProductForm() {
                   <label className="block text-xs font-semibold text-neutral-300 mb-1.5">
                     Brand *
                   </label>
-                  <select
+                  <AdminDropdown
+                    options={BRAND_OPTIONS}
                     value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    className="w-full bg-[#202020] border border-[#303030] rounded-[12px] px-3.5 py-2.5 text-sm text-white outline-none focus:border-neutral-400 transition-colors cursor-pointer"
-                  >
-                    {KNOWN_BRANDS.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                    <option value="other">Other / Custom Brand</option>
-                  </select>
+                    onChange={(val) => setBrand(val)}
+                  />
 
                   {brand === 'other' && (
                     <input
@@ -421,15 +427,11 @@ export function AddProductForm() {
                     <label className="block text-xs font-semibold text-neutral-300 mb-1.5">
                       Condition Grade *
                     </label>
-                    <select
+                    <AdminDropdown
+                      options={CONDITION_OPTIONS}
                       value={condition}
-                      onChange={(e) => setCondition(e.target.value as any)}
-                      className="w-full bg-[#202020] border border-[#303030] rounded-[12px] px-3.5 py-2.5 text-sm text-white outline-none focus:border-neutral-400 transition-colors cursor-pointer"
-                    >
-                      <option value="Premium">Premium (Near-new / pristine)</option>
-                      <option value="Excellent">Excellent (Minimal wear)</option>
-                      <option value="Very Good">Very Good (Authentic vintage character)</option>
-                    </select>
+                      onChange={(val) => setCondition(val as any)}
+                    />
                   </div>
                 ) : (
                   <div>
