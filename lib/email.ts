@@ -26,12 +26,13 @@ export async function sendOrderConfirmationEmail(params: SendOrderEmailParams): 
   error?: string;
 }> {
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'orders@thriv.pk';
+  // If RESEND_FROM_EMAIL is set (e.g. 'orders@thriv.pk' after domain verification in Resend), use it.
+  // Otherwise default to 'onboarding@resend.dev' which works out-of-the-box on Resend free tier.
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
   if (!apiKey || apiKey === '<resend_api_key>') {
-    // Clearly marked stub per brief
-    console.log(
-      `[Resend STUB] RESEND_API_KEY is not configured. Email for order ${params.orderNumber} to ${params.customerEmail} skipped.`
+    console.warn(
+      `[Resend STUB] RESEND_API_KEY is not set in environment variables. Order confirmation email for ${params.orderNumber} to ${params.customerEmail} was skipped.`
     );
     return { success: true, stub: true };
   }
@@ -68,23 +69,27 @@ https://thriv-five.vercel.app
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `Thriv <${fromEmail}>`,
+        from: fromEmail.includes('<') ? fromEmail : `Thriv <${fromEmail}>`,
         to: [params.customerEmail],
         subject: `Order Confirmation: ${params.orderNumber}`,
         text: textBody,
       }),
     });
 
+    const resData = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      console.error('[Resend] Failed to send confirmation email:', errData);
-      return { success: false, error: 'Email send failed' };
+      console.error('[Resend Error] Failed to send email:', JSON.stringify(resData));
+      return {
+        success: false,
+        error: resData?.message || 'Resend API rejected the email request',
+      };
     }
 
-    console.log(`[Resend] Confirmation email sent for order ${params.orderNumber}`);
+    console.log(`[Resend Success] Confirmation email sent for order ${params.orderNumber} (id: ${resData?.id})`);
     return { success: true };
   } catch (err: any) {
-    console.error('[Resend] Unexpected error sending email:', err?.message || err);
+    console.error('[Resend Error] Network error sending email:', err?.message || err);
     return { success: false, error: err?.message };
   }
 }
