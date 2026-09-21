@@ -70,7 +70,7 @@ https://thriv-five.vercel.app
       body: JSON.stringify({
         from: `Thriv <${fromEmail}>`,
         to: [params.customerEmail],
-        subject: `Order Confirmation — ${params.orderNumber}`,
+        subject: `Order Confirmation: ${params.orderNumber}`,
         text: textBody,
       }),
     });

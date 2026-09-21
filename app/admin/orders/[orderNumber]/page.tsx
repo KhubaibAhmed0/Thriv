@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import OrderDetailClient from '@/components/admin/OrderDetailClient';
 
 export const metadata: Metadata = {
-  title: 'Order Detail — Thriv Admin',
+  title: 'Order Detail | Thriv Admin',
   description: 'View order details, customer contact, and fulfill parcel.',
   robots: {
     index: false,

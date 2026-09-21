@@ -48,7 +48,7 @@ export function Footer() {
             <div>
               <h4 className="text-sm font-bold text-[#111111]">Final Sale Policy</h4>
               <p className="text-xs text-[#444444] mt-1 leading-relaxed">
-                All sales are strictly final — no returns or exchanges due to unique one-of-one stock.
+                All sales are strictly final: no returns or exchanges due to unique one-of-one stock.
               </p>
             </div>
           </div>

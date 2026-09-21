@@ -168,7 +168,7 @@ export function CartPageClient() {
                 <span className="font-semibold text-[#111111]">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-[#444444]">
-                <span>Delivery — Nationwide</span>
+                <span>Delivery (Nationwide)</span>
                 <span className="font-semibold text-[#111111]">{formatPrice(deliveryFee)}</span>
               </div>
             </div>
@@ -195,7 +195,7 @@ export function CartPageClient() {
               </div>
               <div className="flex items-center gap-2 text-xs text-[#9A9A9A]">
                 <span className="w-3.5 text-center font-bold text-[#8B2020]">!</span>
-                <span>All sales final — no returns or exchanges</span>
+                <span>All sales final: no returns or exchanges</span>
               </div>
             </div>
 

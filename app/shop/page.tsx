@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { ShopCatalog } from '@/components/ShopCatalog';
 
 export const metadata: Metadata = {
-  title: 'Shop All Curated Pieces — Jeans & Graphic Tees',
+  title: 'Shop All Curated Pieces: Jeans & Graphic Tees',
   description:
     'Browse handpicked one-of-one thrift jeans from Zara, Bershka, Calvin Klein, H&M, Old Navy and exclusive in-house anime graphic tees. Flat Rs 200 delivery across Pakistan.',
 };

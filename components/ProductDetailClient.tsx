@@ -261,7 +261,7 @@ export function ProductDetailClient({
                   disabled
                   className="w-full bg-[#F5E6E6] text-[#8B2020] font-bold text-sm py-4 rounded-full cursor-not-allowed text-center"
                 >
-                  Sold Out — No Restocks
+                  Sold Out (No Restocks)
                 </button>
               ) : (
                 <button

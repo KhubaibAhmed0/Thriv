@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MessageCircle, Mail, MapPin, Clock, ArrowUpRight, HelpCircle, ShieldCheck } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Contact Us — WhatsApp, Email & Support',
+  title: 'Contact Us - WhatsApp, Email & Support',
   description:
     'Get in touch with Thriv. Message us directly on WhatsApp (0324-8188616) or email admin@thriv.pk for order queries, measurements, or delivery assistance.',
 };
@@ -33,7 +33,7 @@ export default function ContactPage() {
             Contact Us
           </h1>
           <p className="text-lg text-[#444444] mt-4 leading-relaxed max-w-2xl">
-            Have questions about measurements, condition grades, or your dispatch? Reach out directly — we typically respond within 1–2 hours during business hours.
+            Have questions about measurements, condition grades, or your dispatch? Reach out directly. We typically respond within 1–2 hours during business hours.
           </p>
         </div>
 

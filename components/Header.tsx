@@ -54,8 +54,14 @@ export function Header() {
             </Link>
           </div>
 
-          {/* Center: Desktop Navigation Links (Shop, FAQs, About, Contact) (pink box area) */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-[#444444] absolute left-1/2 -translate-x-1/2">
+          {/* Center: Desktop Navigation Links (Home, Shop, FAQs, About, Contact) */}
+          <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-[#444444] absolute left-1/2 -translate-x-1/2">
+            <Link
+              href="/"
+              className="hover:text-[#111111] transition-colors py-1"
+            >
+              Home
+            </Link>
             <Link
               href="/shop"
               className="hover:text-[#111111] transition-colors py-1"
@@ -155,9 +161,16 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[#E2E0DC] bg-[#F5F3F0] px-4 py-5 space-y-3">
           <Link
-            href="/shop"
+            href="/"
             onClick={() => setMobileMenuOpen(false)}
             className="block text-base font-medium text-[#111111] hover:text-black py-1.5"
+          >
+            Home
+          </Link>
+          <Link
+            href="/shop"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-base font-medium text-[#444444] hover:text-[#111111] py-1.5"
           >
             All Products
           </Link>

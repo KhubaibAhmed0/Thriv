@@ -257,7 +257,7 @@ export function CheckoutForm() {
                 </FieldGroup>
 
                 {/* WhatsApp */}
-                <FieldGroup label="WhatsApp Number" id="whatsapp" required error={errors.whatsapp} hint="For order confirmation — Pakistani number only">
+                <FieldGroup label="WhatsApp Number" id="whatsapp" required error={errors.whatsapp} hint="For order confirmation: Pakistani number only">
                   <input
                     id="whatsapp"
                     type="tel"
@@ -384,7 +384,7 @@ export function CheckoutForm() {
               {showAccountDetails && (
                 <div className="mt-4 p-4 bg-white rounded-[14px] border border-[#E2E0DC]">
                   <p className="text-xs font-bold uppercase tracking-wider text-[#9A9A9A] mb-2.5">
-                    Account Details — {paymentMethod === 'bank-transfer' ? 'Faysal Bank' : paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}
+                    Account Details: {paymentMethod === 'bank-transfer' ? 'Faysal Bank' : paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}
                   </p>
                   
                   {paymentMethod === 'bank-transfer' ? (
@@ -422,7 +422,7 @@ export function CheckoutForm() {
                 />
                 <div>
                   <span className="text-xs font-bold text-[#8B2020]">
-                    I understand all sales are final — no returns, no exchanges.
+                    I understand all sales are final: no returns, no exchanges.
                   </span>
                   <p className="text-[10px] text-[#8B2020]/80 mt-1 leading-relaxed">
                     Thrift pieces are one-of-one with exact measurements on the listing. Please verify measurements match your size before confirming. Once this order is placed and dispatched, it cannot be reversed.
@@ -475,7 +475,7 @@ export function CheckoutForm() {
                   <span className="font-semibold text-[#111111]">{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-[#444444]">
-                  <span>Delivery — Nationwide</span>
+                  <span>Delivery (Nationwide)</span>
                   <span className="font-semibold text-[#111111]">{formatPrice(deliveryFee)}</span>
                 </div>
               </div>
@@ -554,7 +554,7 @@ function FieldGroup({
       <label htmlFor={id} className="block text-xs font-bold text-[#111111] mb-1.5">
         {label}
         {required && <span className="text-[#8B2020] ml-0.5">*</span>}
-        {hint && <span className="font-normal text-[#9A9A9A] ml-1">— {hint}</span>}
+        {hint && <span className="font-normal text-[#9A9A9A] ml-1">({hint})</span>}
       </label>
       {children}
       {error && (

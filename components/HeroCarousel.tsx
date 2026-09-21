@@ -7,10 +7,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 const slides = [
   {
     id: 1,
-    overline: 'Thriv Drop — Karachi',
+    overline: 'Thriv Drop · Karachi',
     headline: 'Branded Jeans.\nOne Piece Only.',
     italic: 'One Piece Only.',
-    sub: 'Zara, Bershka, Calvin Klein, H&M and Old Navy — every pair handpicked, disinfected, and shipped nationwide.',
+    sub: 'Zara, Bershka, Calvin Klein, H&M and Old Navy: every pair handpicked, disinfected, and shipped nationwide.',
     tags: ['1-of-1 Thrift'],
     cta: { label: 'Shop Jeans', href: '/shop?category=jeans' },
     bg: 'linear-gradient(145deg, #1C2431 0%, #2D3748 55%, #3A4A5E 100%)',
@@ -18,7 +18,7 @@ const slides = [
   },
   {
     id: 2,
-    overline: 'In-House Merch — Now Live',
+    overline: 'In-House Merch · Now Live',
     headline: 'Anime Graphic\nTees Are Here.',
     italic: 'Tees Are Here.',
     sub: 'Akira, Evangelion, Berserk, Cowboy Bebop. 240 GSM screenprinted. Sizes S to XL.',

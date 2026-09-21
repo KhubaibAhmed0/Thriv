@@ -15,8 +15,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'thriv — Curated Thrift & Streetwear, Pakistan',
-    template: '%s — thriv',
+    default: 'thriv | Curated Thrift & Streetwear, Pakistan',
+    template: '%s | thriv',
   },
   description:
     'Handpicked, disinfected thrift from H&M, Zara, Bershka, Calvin Klein, and Old Navy. One piece, one price, flat Rs 200 delivery across Pakistan.',

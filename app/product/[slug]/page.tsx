@@ -24,15 +24,15 @@ export async function generateMetadata({
 
   if (!product) {
     return {
-      title: 'Item Not Found — thriv',
+      title: 'Item Not Found | thriv',
     };
   }
 
   return {
-    title: `${product.name} — ${product.brand}`,
+    title: `${product.name} | ${product.brand}`,
     description: product.description,
     openGraph: {
-      title: `${product.name} — ${product.brand}`,
+      title: `${product.name} | ${product.brand}`,
       description: product.description,
       type: 'website',
     },

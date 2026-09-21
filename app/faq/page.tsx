@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'FAQs — Sizing, Delivery, Payment & Returns',
+  title: 'FAQs: Sizing, Delivery, Payment & Returns',
   description:
     'Answers to common questions about Thriv: how to order, sizing for thrift vs. merch, delivery times, payment methods, condition grades, and our no-returns policy.',
 };
@@ -13,17 +13,17 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
     q: 'How do I figure out the right size for a thrift piece?',
     a: (
       <span>
-        Every thrift listing includes exact garment measurements — waist, length, inseam, and rise — measured flat in inches. The listed size (e.g. &quot;Size 32&quot;) is the label size on the garment. <strong>We strongly recommend comparing the measurements against a pair of jeans you already own</strong> and are comfortable in, rather than relying on the label size alone, because thrift sizes vary significantly between brands and years. Measurements are the most reliable guide. All sales are final — no returns or exchanges.
+        Every thrift listing includes exact garment measurements (waist, length, inseam, and rise) measured flat in inches. The listed size (e.g. &quot;Size 32&quot;) is the label size on the garment. <strong>We strongly recommend comparing the measurements against a pair of jeans you already own</strong> and are comfortable in, rather than relying on the label size alone, because thrift sizes vary significantly between brands and years. Measurements are the most reliable guide. All sales are final: no returns or exchanges.
       </span>
     ),
   },
   {
     q: 'What sizes are available for graphic tees?',
-    a: 'All four anime graphic tee designs are available in S, M, L, and XL. These are oversized/boxy streetwear fits — they are intended to fit large. If you are between sizes, size down. Chest and shoulder measurements for size L are listed on each product page.',
+    a: 'All four anime graphic tee designs are available in S, M, L, and XL. These are oversized/boxy streetwear fits that are intended to fit large. If you are between sizes, size down. Chest and shoulder measurements for size L are listed on each product page.',
   },
   {
     q: 'How long does delivery take?',
-    a: 'We dispatch from Karachi. Estimated delivery is 3–7 working days depending on your city. Karachi deliveries typically arrive within 2–3 days. Further cities (Peshawar, Quetta, Gilgit) may take closer to 7 days. A tracking number from the courier will be sent on WhatsApp after dispatch. We cannot guarantee exact delivery dates — this depends on the courier.',
+    a: 'We dispatch from Karachi. Estimated delivery is 3–7 working days depending on your city. Karachi deliveries typically arrive within 2–3 days. Further cities (Peshawar, Quetta, Gilgit) may take closer to 7 days. A tracking number from the courier will be sent on WhatsApp after dispatch. We cannot guarantee exact delivery dates as this depends on the courier.',
   },
   {
     q: 'How much does delivery cost?',
@@ -35,11 +35,11 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
       <span>
         We accept five payment methods:
         <ul className="list-disc list-inside mt-2 space-y-1">
-          <li><strong>Cash on Delivery (COD)</strong> — pay in cash when your parcel arrives.</li>
-          <li><strong>Bank Transfer</strong> — transfer to our bank account; send the payment screenshot on WhatsApp.</li>
-          <li><strong>EasyPaisa</strong> — send to our EasyPaisa number; share the confirmation screenshot on WhatsApp.</li>
-          <li><strong>JazzCash</strong> — same process as EasyPaisa.</li>
-          <li><strong>Card</strong> — card payments are coming soon and are not yet live.</li>
+          <li><strong>Cash on Delivery (COD)</strong>: pay in cash when your parcel arrives.</li>
+          <li><strong>Bank Transfer</strong>: transfer to our bank account; send the payment screenshot on WhatsApp.</li>
+          <li><strong>EasyPaisa</strong>: send to our EasyPaisa number; share the confirmation screenshot on WhatsApp.</li>
+          <li><strong>JazzCash</strong>: same process as EasyPaisa.</li>
+          <li><strong>Card</strong>: card payments are coming soon and are not yet live.</li>
         </ul>
         <span className="block mt-2 text-[#9A9A9A]">For Bank Transfer, EasyPaisa, and JazzCash, account details are displayed at checkout after you select the payment method.</span>
       </span>
@@ -47,7 +47,7 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
   },
   {
     q: 'Can I return or exchange an item?',
-    a: 'No. All sales at Thriv are strictly final — no returns and no exchanges, on any item, for any reason. This applies equally to thrift jeans and graphic tees. Thrift inventory is one-of-one: once a piece ships, it cannot be re-listed in the same condition. Please read each listing carefully, check the measurements, and review the condition grade before ordering. We provide accurate photography and honest descriptions to help you make an informed decision.',
+    a: 'No. All sales at Thriv are strictly final: no returns and no exchanges, on any item, for any reason. This applies equally to thrift jeans and graphic tees. Thrift inventory is one-of-one: once a piece ships, it cannot be re-listed in the same condition. Please read each listing carefully, check the measurements, and review the condition grade before ordering. We provide accurate photography and honest descriptions to help you make an informed decision.',
   },
   {
     q: 'What are the condition grades and what do they mean?',
@@ -56,13 +56,13 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
         All thrift items are graded using exactly three grades:
         <ul className="mt-2 space-y-2">
           <li>
-            <strong className="text-[#5A4A2F]">Premium</strong> — The piece shows no visible signs of wear. Hardware, stitching, wash colour, and structure are all in as-close-to-new condition as a pre-loved garment can be. Typically sourced from wardrobes where it was worn rarely or gently.
+            <strong className="text-[#5A4A2F]">Premium</strong>: The piece shows no visible signs of wear. Hardware, stitching, wash colour, and structure are all in as-close-to-new condition as a pre-loved garment can be. Typically sourced from wardrobes where it was worn rarely or gently.
           </li>
           <li>
-            <strong className="text-[#1E3A5F]">Excellent</strong> — Light signs of natural wear consistent with regular use: minimal fading, no structural flaws, pockets in good condition. This is the most common grade in our inventory.
+            <strong className="text-[#1E3A5F]">Excellent</strong>: Light signs of natural wear consistent with regular use: minimal fading, no structural flaws, pockets in good condition. This is the most common grade in our inventory.
           </li>
           <li>
-            <strong className="text-[#2E5E2E]">Very Good</strong> — Visible signs of wear — surface fade, minor whisker marks, or softened cotton — that are characteristic of authentic pre-loved denim. No holes, tears, or structural damage. Still a great everyday piece.
+            <strong className="text-[#2E5E2E]">Very Good</strong>: Visible signs of wear (surface fade, minor whisker marks, or softened cotton) that are characteristic of authentic pre-loved denim. No holes, tears, or structural damage. Still a great everyday piece.
           </li>
         </ul>
         <span className="block mt-2 text-[#9A9A9A]">No item outside these three grades is listed. If a piece doesn&apos;t meet Very Good, it doesn&apos;t get listed.</span>
@@ -71,7 +71,7 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
   },
   {
     q: 'Is there a stock of more than 1 for thrift items?',
-    a: 'No. Every thrift piece is one-of-one — a single item with a single fixed size, stock of exactly 1. When it sells, it is gone. There is no restock. Thrift items cannot be ordered in multiples. The graphic tees (in-house merch) are the only products with real batch stock and multiple sizes.',
+    a: 'No. Every thrift piece is one-of-one: a single item with a single fixed size, stock of exactly 1. When it sells, it is gone. There is no restock. Thrift items cannot be ordered in multiples. The graphic tees (in-house merch) are the only products with real batch stock and multiple sizes.',
   },
   {
     q: 'How do I place an order?',
@@ -91,7 +91,7 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
   },
   {
     q: 'Can I see the item before paying (for COD)?',
-    a: 'With Cash on Delivery, you can open the package in front of the courier before paying. However, this is limited to a visual inspection only — it does not constitute a try-on and the no-returns policy still applies once you accept the parcel.',
+    a: 'With Cash on Delivery, you can open the package in front of the courier before paying. However, this is limited to a visual inspection only; it does not constitute a try-on and the no-returns policy still applies once you accept the parcel.',
   },
 ];
 

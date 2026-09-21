@@ -12,9 +12,9 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'thriv — Curated Thrift Jeans & Anime Graphic Tees · Pakistan',
+  title: 'thriv | Curated Thrift Jeans & Anime Graphic Tees · Pakistan',
   description:
-    'One-of-one branded denim from Zara, Bershka, Calvin Klein, H&M, Old Navy — handpicked, disinfected, and shipped flat Rs 200 nationwide. Plus in-house anime graphic tees.',
+    'One-of-one branded denim from Zara, Bershka, Calvin Klein, H&M, Old Navy: handpicked, disinfected, and shipped flat Rs 200 nationwide. Plus in-house anime graphic tees.',
 };
 
 const featuredMerch = products.find((p) => p.isMerch && p.isFeatured);
@@ -233,7 +233,7 @@ export default function HomePage() {
                 Handpicked &amp; Disinfected
               </h3>
               <p className="text-xs text-[#444444] leading-relaxed">
-                Every piece is physically inspected for structural integrity, odour, and wear before it&apos;s listed. What you see in the photos is exactly what ships to you — no surprises.
+                Every piece is physically inspected for structural integrity, odour, and wear before it&apos;s listed. What you see in the photos is exactly what ships to you: no surprises.
               </p>
             </div>
 
@@ -272,7 +272,7 @@ export default function HomePage() {
                 Rs 200 Flat, Anywhere
               </h3>
               <p className="text-xs text-[#444444] leading-relaxed">
-                One price, nationwide. Whether you&apos;re in Karachi, Lahore, Peshawar, or Gilgit — courier delivery is Rs 200 flat. Order by WhatsApp or directly on the site.
+                One price, nationwide. Whether you&apos;re in Karachi, Lahore, Peshawar, or Gilgit, courier delivery is Rs 200 flat. Order by WhatsApp or directly on the site.
               </p>
             </div>
           </div>

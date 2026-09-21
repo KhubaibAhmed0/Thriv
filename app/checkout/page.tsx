@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { CheckoutForm } from '@/components/CheckoutForm';
 
 export const metadata: Metadata = {
-  title: 'Checkout — thriv',
-  description: 'Complete your order. Flat Rs 200 delivery nationwide.',
+  title: 'Checkout | thriv',
+  description: 'Complete your Thriv order. Flat Rs 200 delivery nationwide across Pakistan.',
 };
 
 export default function CheckoutPage() {

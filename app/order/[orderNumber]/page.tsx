@@ -8,7 +8,7 @@ interface OrderPageProps {
 export async function generateMetadata({ params }: OrderPageProps): Promise<Metadata> {
   const { orderNumber } = await params;
   return {
-    title: `Order ${orderNumber} Confirmed — thriv`,
+    title: `Order ${orderNumber} Confirmed | thriv`,
     description: 'Your Thriv order has been placed. Check WhatsApp for confirmation.',
   };
 }
