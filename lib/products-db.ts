@@ -13,24 +13,26 @@ export async function getAllProducts(): Promise<Product[]> {
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        return data.map((row: any): Product => ({
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          brand: row.brand,
-          category: row.category,
-          subcategory: row.subcategory || (row.category === 'jeans' ? 'straight-leg' : 'anime-tees'),
-          price: row.price_pkr,
-          condition: row.condition || 'Premium',
-          isMerch: row.is_merch || false,
-          size: row.size,
-          sizes: row.sizes,
-          stock: row.stock,
-          images: row.images || [],
-          description: row.description,
-          measurements: row.measurements || {},
-          isFeatured: row.is_featured || false,
-        }));
+        return data
+          .filter((row: any) => row.slug !== 'bershka-washed-black-balloon-jeans')
+          .map((row: any): Product => ({
+            id: row.id,
+            slug: row.slug,
+            name: row.name,
+            brand: row.brand,
+            category: row.category,
+            subcategory: row.subcategory || (row.category === 'jeans' ? 'straight-leg' : 'anime-tees'),
+            price: row.price_pkr,
+            condition: row.condition || 'Premium',
+            isMerch: row.is_merch || false,
+            size: row.size,
+            sizes: row.sizes,
+            stock: row.stock,
+            images: row.images || [],
+            description: row.description,
+            measurements: row.measurements || {},
+            isFeatured: row.is_featured || false,
+          }));
       }
     } catch (e) {
       console.warn('[getAllProducts] Supabase fetch fallback to static:', e);
@@ -40,6 +42,7 @@ export async function getAllProducts(): Promise<Product[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
+  if (slug === 'bershka-washed-black-balloon-jeans') return null;
   if (isServiceConfigured()) {
     try {
       const client = getServiceClient();
