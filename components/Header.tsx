@@ -29,10 +29,10 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 bg-[#F5F3F0]/95 backdrop-blur-md border-b border-[#E2E0DC]/60 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16">
+        <div className="relative flex items-center justify-between h-16 sm:h-20">
           
-          {/* Left: Mobile menu toggle button */}
-          <div className="flex items-center md:flex-1">
+          {/* Left: Mobile menu toggle button + Wordmark "thriv.pk" (black box area) */}
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -45,10 +45,7 @@ export function Header() {
                 <Menu className="w-5 h-5 stroke-[1.75]" />
               )}
             </button>
-          </div>
 
-          {/* Center: Wordmark "thriv.pk" */}
-          <div className="flex items-center justify-center">
             <Link
               href="/"
               className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111111] hover:opacity-90 transition-opacity"
@@ -57,8 +54,36 @@ export function Header() {
             </Link>
           </div>
 
+          {/* Center: Desktop Navigation Links (Shop, FAQs, About, Contact) (pink box area) */}
+          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-[#444444] absolute left-1/2 -translate-x-1/2">
+            <Link
+              href="/shop"
+              className="hover:text-[#111111] transition-colors py-1"
+            >
+              Shop
+            </Link>
+            <Link
+              href="/faq"
+              className="hover:text-[#111111] transition-colors py-1"
+            >
+              FAQs
+            </Link>
+            <Link
+              href="/about"
+              className="hover:text-[#111111] transition-colors py-1"
+            >
+              About
+            </Link>
+            <Link
+              href="/contact"
+              className="hover:text-[#111111] transition-colors py-1"
+            >
+              Contact
+            </Link>
+          </nav>
+
           {/* Right: Search Pill & Cart */}
-          <div className="flex items-center justify-end md:flex-1 gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Search form for desktop / toggle on mobile */}
             <form onSubmit={handleSearchSubmit} className="relative hidden sm:block">
               <input
@@ -102,34 +127,6 @@ export function Header() {
             </Link>
           </div>
         </div>
-
-        {/* Desktop Centered Navigation Bar (Shop, FAQs, About, Contact) */}
-        <nav className="hidden md:flex items-center justify-center gap-8 pb-3 pt-0.5 text-xs sm:text-sm font-semibold tracking-wide text-[#444444]">
-          <Link
-            href="/shop"
-            className="hover:text-[#111111] transition-colors py-1"
-          >
-            Shop
-          </Link>
-          <Link
-            href="/faq"
-            className="hover:text-[#111111] transition-colors py-1"
-          >
-            FAQs
-          </Link>
-          <Link
-            href="/about"
-            className="hover:text-[#111111] transition-colors py-1"
-          >
-            About
-          </Link>
-          <Link
-            href="/contact"
-            className="hover:text-[#111111] transition-colors py-1"
-          >
-            Contact
-          </Link>
-        </nav>
 
         {/* Mobile Search Input Drawer when toggled */}
         {showSearchInput && (
