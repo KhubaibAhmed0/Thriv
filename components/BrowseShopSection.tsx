@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import type { Product } from '@/types';
@@ -20,19 +20,45 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id'];
 
-export function BrowseShopSection({ products, featuredMerch }: BrowseShopSectionProps) {
+export function BrowseShopSection({ products: initialProducts, featuredMerch: initialFeaturedMerch }: BrowseShopSectionProps) {
   const [activeTab, setActiveTab] = useState<TabId>('all');
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+
+  useEffect(() => {
+    fetch('/api/products')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+          setProducts(data.products);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const featuredMerch = useMemo(() => {
+    return products.find((p) => p.isMerch && p.isFeatured) ?? initialFeaturedMerch;
+  }, [products, initialFeaturedMerch]);
 
   const displayProducts = useMemo(() => {
+    const sortAvailableFirst = (list: Product[]) => {
+      return [...list].sort((a, b) => {
+        const aSold = a.stock <= 0;
+        const bSold = b.stock <= 0;
+        if (aSold && !bSold) return 1;
+        if (!aSold && bSold) return -1;
+        return 0;
+      });
+    };
+
     if (activeTab === 'featured') {
-      return products.filter((p) => p.isFeatured).slice(0, 4);
+      return sortAvailableFirst(products.filter((p) => p.isFeatured)).slice(0, 4);
     }
     if (activeTab === 'all') {
       const others = products.filter((p) => p.id !== featuredMerch?.id);
       const combined = featuredMerch ? [featuredMerch, ...others] : others;
-      return combined.slice(0, 4);
+      return sortAvailableFirst(combined).slice(0, 4);
     }
-    return products.filter((p) => p.category === activeTab).slice(0, 4);
+    return sortAvailableFirst(products.filter((p) => p.category === activeTab)).slice(0, 4);
   }, [products, featuredMerch, activeTab]);
 
   const shopMoreHref = useMemo(() => {

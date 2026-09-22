@@ -119,6 +119,12 @@ export function ShopCatalog() {
         return true;
       })
       .sort((a, b) => {
+        // In-stock items (stock > 0) always appear before sold-out items (stock <= 0)
+        const aSold = a.stock <= 0;
+        const bSold = b.stock <= 0;
+        if (aSold && !bSold) return 1;
+        if (!aSold && bSold) return -1;
+
         if (activeSort === 'price-asc') {
           return a.price - b.price;
         }
@@ -172,7 +178,7 @@ export function ShopCatalog() {
 
         {/* Total results count */}
         <div className="text-xs font-semibold text-[#444444] shrink-0 bg-white border border-[#E2E0DC] px-3.5 py-1.5 rounded-full self-start md:self-auto">
-          {filteredProducts.length} {filteredProducts.length === 1 ? 'Piece Available' : 'Pieces Available'}
+          {filteredProducts.length} {filteredProducts.length === 1 ? 'Piece' : 'Pieces'}
         </div>
       </div>
 

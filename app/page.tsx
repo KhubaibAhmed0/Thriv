@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { products } from '@/data/products';
+import { getAllProducts } from '@/lib/products-db';
 import { HeroCarousel } from '@/components/HeroCarousel';
 import { BrowseShopSection } from '@/components/BrowseShopSection';
 import { YouMayAlsoLikeRow } from '@/components/YouMayAlsoLikeRow';
@@ -11,15 +11,17 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
+export const revalidate = 0;
+
 export const metadata = {
   title: 'thriv | Curated Thrift Jeans & Anime Graphic Tees · Pakistan',
   description:
     'One-of-one branded denim from Zara, Bershka, Calvin Klein, H&M, Old Navy: handpicked, disinfected, and shipped flat Rs 200 nationwide. Plus in-house anime graphic tees.',
 };
 
-const featuredMerch = products.find((p) => p.isMerch && p.isFeatured);
-
-export default function HomePage() {
+export default async function HomePage() {
+  const products = await getAllProducts();
+  const featuredMerch = products.find((p) => p.isMerch && p.isFeatured);
   return (
     <main className="bg-[#F5F3F0] overflow-x-hidden">
 
