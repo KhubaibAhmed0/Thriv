@@ -81,6 +81,20 @@ export async function POST(req: NextRequest) {
     }
 
     const stock = stockStr ? parseInt(stockStr, 10) : 1;
+    if (isNaN(stock) || stock < 0) {
+      return NextResponse.json(
+        { error: 'Stock must be a non-negative integer.' },
+        { status: 400 }
+      );
+    }
+    // 1-of-1 invariant (audit F-11): thrift pieces can only be 0 or 1. The DB
+    // backstops this with the products_thrift_one_of_one CHECK constraint.
+    if (!isMerch && stock > 1) {
+      return NextResponse.json(
+        { error: 'One-of-one thrift pieces can only have stock 0 or 1.' },
+        { status: 400 }
+      );
+    }
 
     let measurements: any = null;
     if (measurementsRaw) {
@@ -147,7 +161,7 @@ export async function POST(req: NextRequest) {
         is_merch: isMerch,
         size: isMerch ? null : size,
         sizes: isMerch ? (sizes && sizes.length > 0 ? sizes : ['S', 'M', 'L', 'XL']) : null,
-        stock: isNaN(stock) ? 1 : stock,
+        stock,
         images: imageUrls,
         description,
         measurements,

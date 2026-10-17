@@ -548,8 +548,10 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
           )}
 
           {/* Secondary Actions (Smaller, Visually Subordinate) */}
+          {/* Mirrors the server-side state machine (update_order_status):
+              forward moves only, cancel possible until delivered. */}
           <div className="grid grid-cols-3 gap-2 pt-1">
-            {order.status !== 'confirmed' && order.status !== 'delivered' && (
+            {order.status === 'new' && (
               <button
                 onClick={() => handleStatusChange('confirmed')}
                 disabled={updatingStatus}
@@ -559,7 +561,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
               </button>
             )}
 
-            {order.status !== 'shipped' && order.status !== 'delivered' && (
+            {(order.status === 'new' || order.status === 'confirmed') && (
               <button
                 onClick={() => handleStatusChange('shipped')}
                 disabled={updatingStatus}
@@ -569,7 +571,9 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
               </button>
             )}
 
-            {order.status !== 'cancelled' && (
+            {(order.status === 'new' ||
+              order.status === 'confirmed' ||
+              order.status === 'shipped') && (
               <button
                 onClick={() => {
                   if (confirm('Are you sure you want to cancel this order?')) {
@@ -583,6 +587,14 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
               </button>
             )}
           </div>
+
+          {(order.status === 'delivered' || order.status === 'cancelled') && (
+            <p className="text-[11px] text-neutral-500 pt-1">
+              {order.status === 'delivered'
+                ? 'Order completed — no further fulfillment actions.'
+                : 'Order cancelled — stock has been restored; no further actions.'}
+            </p>
+          )}
         </div>
 
         {/* ── Status History (from order_events) ── */}

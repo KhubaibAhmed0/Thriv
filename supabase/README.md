@@ -5,6 +5,10 @@ The **authoritative** database definition for this project lives in `migrations/
 1. `20260920_initial_schema.sql`
 2. `20260920_place_order_rpc.sql`
 3. `20260921_products_storage.sql`
+4. `20261017_b2_data_integrity.sql` — supersedes the `place_order` definition from
+   #2 (per-slug stock aggregation), adds `update_order_status()` (the only writer of
+   order status changes, incl. cancel stock restore) and the
+   `products_thrift_one_of_one` CHECK for thrift pieces.
 
 Apply them in filename order (Supabase SQL editor, or any Postgres client connected
 as the `postgres` role).
