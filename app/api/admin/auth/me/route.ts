@@ -1,53 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { verifyAdminRequest } from '@/lib/admin-auth';
+import { isSupabasePublicConfigured } from '@/lib/supabase-env';
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get('thriv_admin_token')?.value;
-    if (!token) {
+    const cookieToken = req.cookies.get('thriv_admin_token')?.value;
+    const bearerToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    if (!cookieToken && !bearerToken) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    const rawUrl =
-      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const rawKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      process.env.SUPABASE_ANON_KEY ||
-      process.env.SUPABASE_KEY;
-
-    const supabaseUrl = rawUrl?.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
-    const anonKey = rawKey?.trim();
-
-    if (!supabaseUrl || !anonKey) {
-      return NextResponse.json({ authenticated: false, error: 'Unconfigured' }, { status: 503 });
+    if (!isSupabasePublicConfigured()) {
+      return NextResponse.json(
+        { authenticated: false, error: 'Server auth is not configured' },
+        { status: 503 }
+      );
     }
 
-    const authClient = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false },
-    });
+    // Shared fail-closed guard (audit F-01): verifies the token AND that the
+    // user is registered in the admins table (audit F-08).
+    const { authorized, user } = await verifyAdminRequest(req);
 
-    const { data: { user }, error: userError } = await authClient.auth.getUser(token);
-    if (userError || !user) {
+    if (!authorized || !user) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    if (isServiceConfigured()) {
-      const serviceClient = getServiceClient();
-      const { data: adminRow } = await serviceClient
-        .from('admins')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!adminRow) {
-        return NextResponse.json({ authenticated: false, error: 'Not an admin' }, { status: 403 });
-      }
-    }
-
+    // NOTE (audit F-42): the raw access token is deliberately NOT returned.
+    // The HttpOnly cookie stays the only place the browser holds it; the
+    // admin UI no longer needs a token for Supabase Realtime (it polls).
     return NextResponse.json({
       authenticated: true,
-      token,
       user: {
         id: user.id,
         email: user.email,

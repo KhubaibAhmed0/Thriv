@@ -2,6 +2,8 @@
 
 This document contains the complete history, architectural decisions, credentials, live links, and business configurations for the **Thriv (`@thriv.pk`)** e-commerce platform. Paste this into any new AI session to give it full, immediate context.
 
+> **Security note (2026-10-17):** A full audit was run and the fixes are logged in [`FIX_LOG.md`](./FIX_LOG.md). The admin password that used to live in this file has been rotated and must never be committed again; Supabase env keys are set in Vercel, not in the repo.
+
 ---
 
 ## 1. Project Overview & Business Profile
@@ -25,11 +27,12 @@ This document contains the complete history, architectural decisions, credential
 | :--- | :--- |
 | **Live Storefront** | [https://thriv-five.vercel.app](https://thriv-five.vercel.app) |
 | **Admin Portal** | [https://thriv-five.vercel.app/admin](https://thriv-five.vercel.app/admin) |
-| **Admin Password** | `thriv2026` |
+| **Admin Access** | Supabase Auth email + password (`admin@thriv.pk`). The password is **not** stored in this repo (it leaked here once and was rotated 2026-10-17); it lives with the owner. |
 | **GitHub Repository** | [https://github.com/KhubaibAhmed0/Thriv](https://github.com/KhubaibAhmed0/Thriv) (Branch: `main`) |
 | **GitHub User / Email** | `KhubaibAhmed0` / `khubbiahmed@gmail.com` |
 | **Vercel Account** | `khubaibvalopro-8402` (`khubaibvalopro@gmail.com`) |
 | **Vercel Project** | `khubaibvalopro-8402/thriv` |
+| **Supabase Project** | `Thriv` (ref `bsprovqalduuagsagjxh`, region `ap-southeast-1`). Env keys live in Vercel (Production + Preview). |
 
 ### Client Payment & Contact Details:
 - **Bank**: Faysal Bank
@@ -46,6 +49,7 @@ This document contains the complete history, architectural decisions, credential
 - **UI & Styling**: React 19, Tailwind CSS v4, Lucide Icons
 - **Form & Data Validation**: Zod (`^4.6.5`)
 - **Database**: Supabase PostgreSQL (`@supabase/supabase-js`) with **graceful fallback** (checkout functions 100% smoothly with or without database keys)
+- **Admin Auth**: Supabase Auth (email + password) + `admins` table membership check. All `/admin` pages are guarded by `proxy.ts`; all `/api/admin/*` routes self-guard via `lib/admin-auth.ts`. Both **fail closed**.
 - **Project Directory**: `C:\Users\InaequoSolutions-PC\OneDrive\Desktop\hasan bhai project\thriv`
 
 ---
@@ -61,27 +65,27 @@ thriv/
 │   ├── cart/page.tsx               # Cart view with live calculation and checkout redirect
 │   ├── checkout/page.tsx           # Full checkout with Faysal Bank & wallet details, Rs 200 delivery
 │   ├── order/[orderNumber]/page.tsx# Order confirmation with WhatsApp button & payment instructions
-│   ├── admin/page.tsx              # Server wrapper for Admin Portal
+│   ├── admin/page.tsx              # Admin orders portal (guarded by proxy.ts)
 │   ├── api/
 │   │   ├── orders/route.ts         # Handles order creation, Zod validation, Supabase saving
-│   │   └── admin/orders/
-│   │       ├── route.ts            # GET all orders (password protected)
-│   │       └── [id]/route.ts       # PATCH order status (pending -> confirmed -> dispatched -> etc.)
+│   │   └── admin/…                 # Admin API routes (all self-guard via lib/admin-auth.ts)
 │   ├── about/page.tsx              # Brand story & curation ethos
 │   └── faq/page.tsx                # FAQs on delivery, payment, sizing, and final sale policy
 ├── components/
 │   ├── ui/CustomDropdown.tsx       # Custom popover dropdowns for filters (replaces native <select>)
 │   ├── CheckoutForm.tsx            # Checkout form, Pakistani provinces, payment tabs, final sale checkbox
 │   ├── OrderConfirmationClient.tsx # Order summary, step-by-step Faysal Bank transfer, WhatsApp CTA
-│   ├── AdminDashboardClient.tsx    # Password-protected admin dashboard, metrics, 1-click WhatsApp links
 │   ├── WhatsAppFAB.tsx             # Floating WhatsApp button wired to 0324-8188616
-│   ├── Navbar.tsx & Footer.tsx     # Branded header with cart counter and footer with admin link
+│   └── Navbar.tsx & Footer.tsx     # Branded header with cart counter and footer with admin link
 ├── data/
 │   └── products.ts                 # 32 total products (28 vintage jeans + 4 anime tees)
 ├── lib/
-│   └── supabase.ts                 # Supabase client helper with fallback for offline/local mode
+│   ├── admin-auth.ts               # Fail-closed admin token verification (cookie or Bearer header)
+│   ├── supabase-env.ts             # Single source of truth for Supabase env config + placeholder guards
+│   └── supabase-server.ts          # Service-role Supabase client (server only)
+├── proxy.ts                        # Next.js 16 proxy (successor of middleware.ts) — protects /admin/*
 └── supabase/
-    └── schema.sql                  # 1-click SQL migration script for Supabase tables, indexes, and RLS
+    └── migrations/                 # Authoritative SQL migrations — apply in filename order (see §7)
 ```
 
 ---
@@ -93,11 +97,11 @@ During development, the following specific adjustments were made per user reques
 2. **Removed "Ghost in the Shell" Tee**: Reduced anime tees from 5 to 4 designs (Akira, Evangelion, Berserk, Cowboy Bebop).
 3. **Custom Filter Dropdowns**: Replaced native browser `<select>` tags on `/shop` with custom styled pill popovers (`CustomDropdown.tsx`) with condition grade color dots (`#5A4A2F`, `#1E3A5F`, `#2E5E2E`).
 4. **Real Client Credentials**: Replaced dummy payment details with Hasan Bhai's real Faysal Bank IBAN and WhatsApp.
-5. **Admin Portal (`/admin`)**: Built an admin portal with password `thriv2026` featuring:
+5. **Admin Portal (`/admin`)**: Built an admin portal backed by Supabase Auth (email + password) featuring:
    - Total Sales & Order count metrics.
    - Status filters (`Pending`, `Confirmed`, `Dispatched`, `Delivered`, `Cancelled`).
    - **1-Click WhatsApp Direct Chat**: Generates a pre-filled WhatsApp message with the customer's name, order items, total, and delivery address for instant order confirmation.
-6. **Supabase Database with Graceful Fallback**: Created `supabase/schema.sql` and `lib/supabase.ts`. If Supabase keys are not set in Vercel, the checkout **never breaks**—orders are routed directly to WhatsApp and stored locally.
+6. **Supabase Database with Graceful Fallback**: Created the SQL migrations under `supabase/migrations/` (authoritative) — see §7. If Supabase keys are not set in Vercel, the checkout **never breaks**—orders are routed directly to WhatsApp. **Warning:** an older legacy `supabase/schema.sql` (it granted the public anon key read access to every order) was deleted during the 2026-10-17 security pass. Never re-add or run SQL that creates `USING (true)` policies on `orders`.
 
 ---
 
@@ -113,14 +117,19 @@ During development, the following specific adjustments were made per user reques
   `.vercelignore` must always exclude `.next`, `.git`, and `node_modules`. This keeps the upload size ~420KB (deploys in seconds) instead of uploading gigabytes of cache.
 - **Next.js `useSearchParams()` Rule**:
   Any client component using `useSearchParams()` (e.g. `ShopCatalog.tsx`, `CategoryFilterRow.tsx`) MUST be wrapped in a `<Suspense>` boundary on its page to prevent Next.js static build failures.
+- **Admin Auth Rules (2026-10-17 audit)**:
+  - Never re-introduce "allow when unconfigured" fallbacks in `lib/admin-auth.ts`, `proxy.ts`, or the admin API routes — they must fail closed.
+  - `/api/admin/auth/me` must never echo the raw access token; the HttpOnly cookie is the only place the browser holds it.
+  - `middleware.ts` is deprecated in Next 16 — page guards live in `proxy.ts`.
 
 ---
 
 ## 7. Current Project Status & What's Left
 
-- **Development Status**: **100% Complete and Production-Ready**.
+- **Development Status**: **100% Complete and Production-Ready** (security-hardened 2026-10-17 — see `FIX_LOG.md`).
 - **Live URL**: `https://thriv-five.vercel.app` (HTTP 200 on all 45 routes).
 - **Optional Next Steps for Hasan Bhai**:
   1. Add `https://thriv-five.vercel.app` to the `@thriv.pk` Instagram bio.
   2. Connect a custom domain (e.g. `thriv.pk`) in Vercel Settings → Domains (optional).
-  3. Run `supabase/schema.sql` and add Supabase keys to Vercel whenever a persistent cloud database is desired (optional; WhatsApp checkout works completely without it).
+  3. Supabase is already configured and live (project `Thriv`). For a *fresh* environment, apply `supabase/migrations/` in filename order (`20260920_initial_schema.sql` → `20260920_place_order_rpc.sql` → `20260921_products_storage.sql`) and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in Vercel (Production **and** Preview). Never use or restore the deleted legacy `schema.sql`.
+  4. Read `FIX_LOG.md` for the full 2026-10 audit remediation log (what was fixed, live probes, and remaining recommendations).

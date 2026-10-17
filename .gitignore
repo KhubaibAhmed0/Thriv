@@ -36,8 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase cli
+supabase/.temp/
+
+# local knowledge-graph tooling output
+graphify-out/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-.vercel

@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { AdminNavHeader } from '@/components/admin/AdminNavHeader';
 import {
   Search,
@@ -193,100 +192,60 @@ export default function AdminOrdersListClient() {
     fetchOrders();
   }, []);
 
-  // Supabase Realtime subscription
+  // New-order polling: refresh the list every 30s so fresh orders appear and
+  // raise a toast without a manual refresh.
+  //
+  // Replaces the previous Supabase Realtime subscription, which required the
+  // server to echo the raw session token to the browser (audit F-42 — the
+  // token is now deliberately never exposed to JS; see /api/admin/auth/me).
   useEffect(() => {
-    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    const supabaseUrl = rawUrl?.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
-    const anonKey = rawKey?.trim();
-
-    if (!supabaseUrl || !anonKey || !supabaseUrl.startsWith('https://')) {
-      return;
-    }
-
+    const POLL_MS = 30000;
     let isMounted = true;
-    let channel: any = null;
-    let supabase: any = null;
 
-    const setupRealtime = async () => {
+    const poll = async () => {
       try {
-        // Retrieve session token to authenticate Realtime connection under RLS
-        const authRes = await fetch('/api/admin/auth/me');
-        if (!authRes.ok) return;
-        const authData = await authRes.json();
-        if (!authData.token || !isMounted) return;
+        const res = await fetch('/api/admin/orders', { cache: 'no-store' });
+        if (!isMounted) return;
+        if (res.status === 401 || res.status === 403) {
+          router.replace('/admin/login');
+          return;
+        }
+        if (!res.ok) return;
 
-        supabase = createClient(supabaseUrl, anonKey, {
-          auth: { persistSession: false },
-        });
+        const data = await res.json();
+        const fetched: OrderListItem[] = data.orders || [];
 
-        // Set token for RLS
-        supabase.realtime.setAuth(authData.token);
+        let latestNew: OrderListItem | null = null;
+        let added = 0;
+        for (const o of fetched) {
+          if (!seenOrderNumbersRef.current.has(o.order_number)) {
+            seenOrderNumbersRef.current.add(o.order_number);
+            added += 1;
+            if (!latestNew) latestNew = o;
+          }
+        }
 
-        channel = supabase
-          .channel('thriv-orders-realtime')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'orders',
-            },
-            (payload: any) => {
-              if (!isMounted) return;
-              const newRow = payload.new;
-              if (!newRow || !newRow.order_number) return;
+        setOrders(fetched);
 
-              // Prevent duplicate toasts for the same order
-              if (seenOrderNumbersRef.current.has(newRow.order_number)) {
-                return;
-              }
-              seenOrderNumbersRef.current.add(newRow.order_number);
-
-              const formattedOrder: OrderListItem = {
-                id: newRow.id,
-                order_number: newRow.order_number,
-                customer_name: newRow.customer_name,
-                customer_phone: newRow.customer_phone,
-                city: newRow.city,
-                province: newRow.province,
-                total_pkr: newRow.total_pkr,
-                payment_method: newRow.payment_method,
-                payment_status: newRow.payment_status,
-                status: newRow.status,
-                created_at: newRow.created_at,
-                delivered_at: newRow.delivered_at,
-                item_count: 1,
-              };
-
-              // Prepend new order to list
-              setOrders((prev) => [formattedOrder, ...prev]);
-
-              // Trigger toast and increment new orders badge
-              setRealtimeToast({
-                orderNumber: newRow.order_number,
-                customerName: newRow.customer_name,
-                totalPkr: newRow.total_pkr,
-              });
-              setNewOrdersCount((c) => c + 1);
-            }
-          )
-          .subscribe();
-      } catch (err) {
-        console.error('[Realtime] Subscription error:', err);
+        if (added > 0 && latestNew) {
+          setNewOrdersCount((c) => c + added);
+          setRealtimeToast({
+            orderNumber: latestNew.order_number,
+            customerName: latestNew.customer_name,
+            totalPkr: latestNew.total_pkr,
+          });
+        }
+      } catch {
+        // Network hiccup — retry on the next tick.
       }
     };
 
-    setupRealtime();
-
+    const id = setInterval(poll, POLL_MS);
     return () => {
       isMounted = false;
-      if (supabase && channel) {
-        supabase.removeChannel(channel);
-      }
+      clearInterval(id);
     };
-  }, []);
+  }, [router]);
 
   const handleSignOut = async () => {
     try {
