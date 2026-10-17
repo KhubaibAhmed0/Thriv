@@ -136,6 +136,68 @@ Operational notes:
 
 ---
 
-## Batches B3–B6 — pending
+## Batch B3 — Purchase path
 
-Applying in report order: B3 (purchase path, F-05…), B4 (dead code & data truth), B5 (UX/a11y), B6 (hardening). Each will get its own section here with the same evidence format.
+**Findings closed:** F-05 (P0), F-07 (P0), F-09 (P1), F-13 (P1), F-14 (P1), F-17 (P1), F-18 (P1), F-19 (P1), F-20 (P1), F-28 (P1), F-29 (P1), F-58 (P2), plus F-48 (P2, closed early from B6)
+**Branch:** `fix/b3-purchase-path`
+
+### What was wrong
+
+| Finding | Problem |
+| :--- | :--- |
+| F-05 | If the DB key was missing/unhealthy, checkout still returned 201 with a fake `THR-LOCAL-*` order — "Order Placed Successfully" with no row, no stock change, and a customer possibly sending a bank transfer for a nonexistent order. |
+| F-07 | `/checkout`'s empty-cart redirect fired before the localStorage cart hydrated — any hard refresh or deep link bounced the customer to `/cart` and lost the form. |
+| F-09 | `POST /api/orders` had no rate limit (inventory-depletion + replay abuse) and a replayed idempotent request re-sent the confirmation email. |
+| F-13 | A static seed silently shadowed an empty/broken DB: the server fell back to seed data and the shop UI ignored empty API responses. |
+| F-14 | `isServiceConfigured()` accepted placeholder/whitespace values → checkout attempted the RPC against garbage and 500'd instead of failing cleanly. |
+| F-17 | Product pages were build-time SSG snapshots — price/stock/hide changes never reached them until a redeploy. |
+| F-18 | `getProductBySlug` had no `is_active` filter — hidden products stayed viewable and add-to-cart-able until checkout 409'd. |
+| F-19 | The confirmation email was awaited with no timeout; a stalled email turned a retry into a second order. |
+| F-20 | Merch quick-add hardcoded size `L` and `place_order` never validated `selected_size` against `products.sizes`. |
+| F-28 | Checkout errors had no `aria-invalid`/`aria-describedby`/`role=alert`, no focus management, and the error banner sat below a 7-field form. |
+| F-29 | The WhatsApp field rejected spaced/dashed formats people actually type; client and API validators were duplicated and could drift. |
+| F-58 | The confirmation page read `localStorage` only (bare page cross-device), mixed client snapshot lines with server totals, and kept PII indefinitely. |
+
+### Changes
+
+- **New `supabase/migrations/20261017_b3_place_order_v3.sql`** (applied to the live DB — see below): `place_order` v3 = v2 + per-line `selected_size` validation against `products.sizes` (`RAISE P0001: Please select a valid size for <product> (available: …)`); a NULL size is rejected when the product declares sizes; products without a sizes list are unaffected (legacy thrift rows still accept NULL). B2 behaviour (per-slug lock/aggregation, idempotency) unchanged.
+- **`app/api/orders/route.ts`** — rewritten: per-IP rate limit (6 / 10 min) with `429` + `Retry-After` (F-09); unconfigured/placeholder DB or transport failure → `503 { code: 'CHECKOUT_UNAVAILABLE' }` and the form offers a WhatsApp fallback — never a fake success (F-05/F-14); RPC errors mapped to `409` ("sold out", "valid size", "Product not found", …), else `500`; email only when `!result.idempotent`, fire-and-forget with a 5 s `AbortSignal.timeout` (F-09/F-19); Zod caps — 25 items, slug ≤ 120, size ≤ 20 (F-48).
+- **New `lib/rate-limit.ts`** — in-memory per-instance fixed-window limiter. Documented limitation: per-lambda, warm-instance only; move to an edge/KV store when traffic warrants. **New `lib/validation.ts`** — shared `PROVINCES` + Pakistani phone normalization (accepts `+92`/`0092`/`0` with spaces or dashes → `0XXXXXXXXXX`) used by both client and API (F-29).
+- **New `app/api/orders/[orderNumber]/route.ts`** — public order lookup: number/status/payment/totals/created_at/items only, **no PII**; `THR-…` shape gate, 30/10 min rate limit, `503` when unconfigured (F-58).
+- **`components/CheckoutForm.tsx`** — hydration gate before the empty-cart redirect (F-07); idempotency key persisted in `sessionStorage` across refreshes/retries, removed on success; snapshot gains `savedAt`; per-field `aria-invalid`/`aria-describedby` + `role="alert"` summary above the form + focus first invalid + validate-on-blur (F-28); phone normalized on blur with `inputMode="tel"` (F-29); `503` swaps the CTA to "Order on WhatsApp instead".
+- **`lib/products-db.ts`** — DB-as-truth: when configured, the DB is the only source (empty/error → `[]` + `console.error`, never silent seed fallback); `getProductBySlug` filters `is_active` (F-13/F-18). Legacy hidden-slug filter kept until B4/F-15.
+- **`app/product/[slug]/page.tsx`** — `generateStaticParams` removed, `dynamic = 'force-dynamic'`, related items from the live catalogue (F-17/F-18).
+- **Quick-add sizing (F-20)** — new `lib/useQuickAdd.ts`: multi-size merch opens an inline size picker instead of hardcoding `L`; `components/ProductCard.tsx` + `components/ShopTheLook.tsx` use it (ShopTheLook row extracted so each row owns its picker state); cart page gains size-change chips via a new `CHANGE_SIZE` action (`lib/cart.ts`, `types/index.ts`), `CartProvider` exposes `changeSize` + `isHydrated`.
+- **`components/OrderConfirmationClient.tsx`** — renders from the server lookup (authoritative items/money/payment), snapshot used only for PII display with a 24 h TTL (F-58).
+- **`components/ShopCatalog.tsx` + `components/BrowseShopSection.tsx`** — accept empty API results (no stale-seed masking) (F-13).
+- **`supabase/README.md`** — migration #5 documented.
+
+### Operational actions taken
+
+- Migration applied to the live DB via `psycopg` after a full test pass inside a rolled-back transaction (no `supabase_migrations` history table — see header note). Live objects verified after apply: `place_order` is v3 (size-validation marker), B2 markers (`GROUP BY 1` aggregation, `products_thrift_one_of_one`, `update_order_status`) intact, 2 real orders and stock counters untouched.
+
+### Verification
+
+| Check | Result |
+| :--- | :--- |
+| Transactional DB battery (fixtures, rolled back, then live apply) | ✅ 16/16: invalid size rejected `P0001` + **no order row persisted**; missing size rejected; valid size accepted (stock 2 → 1, snapshot keeps size); duplicate sized lines aggregate (stock 3 → 1, 2 snapshot lines, total Rs 3,398); thrift without sizes accepts NULL; B2 regression checks; **rollback zero leak**; live markers + counts unchanged |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run build` | ✅ (`/product/[slug]` now `ƒ` dynamic) |
+| `npx tsx scripts/check-admin-guard.ts` | ✅ all assertions pass |
+| `npx eslint .` | 57 → 52 problems (all remaining pre-existing) |
+| Local prod build + real backend HTTP battery | ✅ 12/12: lookup `THR-00001` 200 with items and **no PII**, unknown/malformed 404, PDP rendered from live DB, invalid size 409 with available-sizes message, unknown slug 409, `0092` phone accepted (normalized), garbage phone 400, 26-item cart 400, repeated attempts 429, catalogue 200 (31 items) |
+| Browser checks (real Chromium against the local prod build) | ✅ checkout deep-link with a hydrated cart **stays on `/checkout`** with form + items + size (F-07); shop quick-add opens the S/M/L/XL picker, cart stays empty until a size is picked, choosing M lands in the cart; cart page size chips flip M → L and persist (F-20) |
+
+### Deploy verification (2026-10-17)
+
+**Preview** — branch commit `d1dd3f0` deployed READY (`thriv-h37hztcs2-…vercel.app`); previews on this project are behind Vercel Authentication, so mechanics only.
+
+**Production** — merge commit `b41d977`, deployment READY (`thriv-ltnd2sxby-…vercel.app`). Same battery against `thriv-five.vercel.app` (rate-limit case skipped so the operator IP stays usable): **12/12 pass** — order lookup 200 (1 line, no PII), unknown/malformed 404, PDP 200 from the live DB, invalid size **409** with `available: S, M, L, XL`, unknown slug 409, `0092`-format phone accepted, garbage phone 400, 26-item cart 400, catalogue 200 (31 items).
+
+> Note: the `d1dd3f0` commit message labels the email-timeout change as F-53; per the audit report that behaviour is **F-19**. F-53 (admin upload gate) remains open in B6.
+
+---
+
+## Batches B4–B6 — pending
+
+Applying in report order: B4 (dead code & data truth), B5 (UX/a11y), B6 (hardening; F-48 already closed in B3). Each will get its own section here with the same evidence format.
