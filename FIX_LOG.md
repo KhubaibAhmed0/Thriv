@@ -198,6 +198,74 @@ Operational notes:
 
 ---
 
-## Batches B4–B6 — pending
+## Batch B4 — Dead-code / data-truth cleanup
 
-Applying in report order: B4 (dead code & data truth), B5 (UX/a11y), B6 (hardening; F-48 already closed in B3). Each will get its own section here with the same evidence format.
+**Findings closed:** F-10 (P1), F-15 (P1), F-16 (P1), F-21 (P1 — code deleted in B1, references verified), F-59 (P2), F-60 (P2), F-62 (P2), F-65 (P2), F-84 (P3), F-85 (P3)
+**Also in this batch's report scope:** F-61 (closed in B3), F-64 (closed in B3), F-63 (resolves with F-27 in B5 — removing `/styleguide` removes the last `components/ui/*` consumer besides `Badge`)
+**Branch:** `fix/b4-dead-code-data-truth`
+
+### What was wrong
+
+| Finding | Problem |
+| :--- | :--- |
+| F-10 | The admin add-product form always collected `subcategory` and `is_featured`, but the `products` table had neither column — the API parsed `subcategory` then ignored it, `is_featured` was never read. Subcategory filters and the "Featured Drop" badge were dead for every DB product. |
+| F-15 | The removed `bershka-washed-black-balloon-jeans` row was still seeded active; the app compensated with a hardcoded slug filter in `lib/products-db.ts` (applied in two places), and the row 404'd everywhere except its own phantom listing. |
+| F-16 | Every seeded image path (`/products/<slug>-N.jpg`) pointed at a file that never existed, and admin referenced a missing `/placeholder.png` — the storefront silently rendered broken images. |
+| F-21 | Dead `AdminDashboardClient` (hardcoded-password gate, dead `x-admin-key` bypass, mock PII) + legacy `lib/supabase.ts` writer — deleted in B1; B4 verified no references remain. |
+| F-59 | Documentation drift: one handover revision kept describing the old fallback checkout and old status names; `README.md` listed the removed Shop-The-Look section and the orphaned `/styleguide`; seed-file counts were wrong. |
+| F-60 | `PAYMENT_LABELS` lived in 4 copies and `STATUS_CONFIG` in 2 — every copy/style change had to be repeated 4–6 times. |
+| F-62 | The Rs 200 delivery fee exists in both TS (`lib/cart.ts`) and the SQL RPC with no cross-reference — money-facing drift risk. |
+| F-65 | `lint` was a bare `eslint` (no target) and nothing ran it; the repo sat at 52 problems, including 5 real `rules-of-hooks` violations in `Header.tsx`. |
+| F-84 | Dead sign-out handler + `LogOut` import, 25 unused vars/imports, 4 dead `data/products.ts` exports, 5 scaffold SVGs, stale header counts. |
+| F-85 | Inert `vercel.json cleanUrls`, ternary-as-statement in `HeroCarousel`, stale `OrderStatus` union (`'pending'` never existed; `'new'`/`'cancelled'` missing). `.gitignore` fixed in B1; tsconfig SUSPECTED sub-items intentionally left as-is (documented). |
+
+### Changes
+
+- **New `supabase/migrations/20261017_b4_data_truth.sql`** (applied live — see below): adds `subcategory TEXT` + `is_featured BOOLEAN NOT NULL DEFAULT false`; backfills 31 subcategories + 3 featured flags from the static catalogue (gap-fill only, never clobbers manual values); hides the phantom balloon row via `is_active = false`; strips every fabricated `/products/*` path (`images = '{}'`); carries the F-62 runbook note. Idempotent — safe to re-run.
+- **`lib/products-db.ts`** — `LEGACY_HIDDEN_SLUG` and both hardcoded filters deleted (visibility = `is_active`, one mechanism); `mapRow` no longer fabricates a subcategory (F-10/F-15).
+- **`app/api/admin/products/route.ts` + `[id]/route.ts`** — POST inserts `subcategory`/`is_featured`; PATCH whitelist accepts both; `any` catches replaced by the new shared `lib/errors.ts` helper (F-10/F-65).
+- **`components/ProductImage.tsx`** — never guesses an image path; without a URL it renders an explicit "Photo coming soon" tile (brand + subcategory + notice); unused `imageIndex` prop removed (F-16).
+- **`components/admin/AdminProductsListClient.tsx`** — `/placeholder.png` references replaced with the existing Package-icon fallback (F-16).
+- **`data/products.ts`** — 31 fake `images` arrays → `[]`; 4 dead query exports removed; header counts corrected (27 jeans / 4 tees) (F-16/F-84).
+- **New `lib/orderLabels.ts`** — single source for customer payment labels, admin short/long variants (`paymentLabel()`), `ENUM_TO_CLIENT`, and `STATUS_CONFIG`; the 6 duplicate copies removed from the order components (F-60).
+- **`lib/cart.ts`** — cross-reference comment tying `FLAT_DELIVERY_FEE` to `v_delivery_fee` in SQL and the B4 migration note (F-62).
+- **F-65** — `"lint": "eslint ."` + `"typecheck": "tsc --noEmit"`; new `.github/workflows/ci.yml` (node 22, `npm ci`, typecheck + lint + build, all blocking); **lint burned down 52 → 0 problems** (Header hooks fix, typed error paths, unused-var removal, effect lint restructured or explicitly disclosed where the rule can't see the await boundary).
+- **`types/index.ts`** — `OrderStatus` = `'new' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'` (F-85).
+- **`vercel.json`** — `cleanUrls` removed; **`components/HeroCarousel.tsx`** — ternary-as-statement → if/else (F-85).
+- **Docs (F-59)** — README (homepage sections, PDP rendering note, `/styleguide` removed) and PROJECT_HANDOVER (DB-required checkout, real status names, file tree, migration list, product counts).
+- **Deleted** — 5 scaffold SVGs (F-84). The historical no-op `EXCEPTION` block in `20260920_place_order_rpc.sql` is intentionally left in place: that file is superseded by the B2/B3 migrations, and rewriting applied history is riskier than leaving dead text (noted in the audit as acceptable).
+
+### Operational actions taken
+
+- Migration applied to the live DB via `psycopg` after a full test pass inside a rolled-back transaction. Post-apply state verified: columns present, 31 subcategories + 3 featured flags backfilled, balloon row inactive, 0 fabricated image paths, product (32) and order (2) row counts unchanged.
+
+### Verification
+
+| Check | Result |
+| :--- | :--- |
+| Transactional DB battery (rolled back, then live apply) | ✅ 28/28: columns exist; 31 subcategories backfilled; 3 featured; balloon hidden and the visible catalogue still 31; 0 fabricated image paths; counts unchanged; B2/B3 markers intact; `place_order` still rejects an invalid size (`P0001`); rollback zero-leak |
+| `npx tsc --noEmit` | ✅ clean |
+| `npx eslint .` | ✅ **0 problems** (was 52) |
+| `npm run build` | ✅ clean |
+| Local HTTP battery (real backend) | ✅ B3 regression 12/12 (lookup no-PII, 404s, PDP from DB, size/slug 409s, phone formats, cart cap, catalogue 31) |
+| Local admin API test | ✅ 11/11: unauthenticated PATCH 401; `is_featured` PATCH round-trip (write + revert); `subcategory` PATCH round-trip (write + revert to NULL); POST create persists both fields; throwaway row deleted by the test |
+| Local storefront truth probes | ✅ PDP renders "Photo coming soon" and zero `/products/*.jpg` references; API 31 items / 0 images / 7 subcategories / 3 featured; hidden slug 404 |
+| Browser (local Chromium) | ✅ shop: 31 visible placeholder tiles, 0 console errors; PDP: 4 tiles, 0 console errors |
+
+### Deploy verification (2026-10-17)
+
+**Preview** — branch commit `45b7d6e` deployed READY (`thriv-m4fuqgv41-…vercel.app`); previews on this project are behind Vercel Authentication, so mechanics only.
+
+**Production** — merge commit `fb991bf`, deployment READY (`thriv-jeno66a0o-…vercel.app`). Against `thriv-five.vercel.app`:
+- B3 regression battery: **12/12** (rate-limit case skipped so the operator IP stays usable).
+- Admin API: **11/11** (login, unauth 401, PATCH round-trips, POST persistence, DB cleanup).
+- Storefront probes: PDP 200 with "Photo coming soon" + no fake paths; API 31 items / 0 images / 3 featured / 7 subcategories; hidden slug **404**.
+- Browser (real Chromium): shop shows **31 "Photo coming soon" tiles + 3 Featured Drop badges**, 0 fake `<img>` paths, 0 console errors.
+
+> Non-automatable item (flagged for the owner): **real product photos**. The storefront shows an explicit "Photo coming soon" tile until photos are uploaded via **admin → Add product / Edit** — uploads land in Supabase Storage as absolute URLs and appear everywhere automatically.
+
+---
+
+## Batches B5–B6 — pending
+
+Applying in report order: B5 (UX/a11y), B6 (hardening; F-48 already closed in B3). Each will get its own section here with the same evidence format.
