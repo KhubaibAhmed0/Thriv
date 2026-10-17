@@ -100,9 +100,10 @@ export function AddProductForm() {
     addFiles(files);
   };
 
-  // Audit F-53: mirror the server-side upload gate (JPG/PNG/WebP, 5 MB) so
-  // oversized or mislabelled files are rejected in the browser first.
-  const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+  // Audit F-53: mirror the server-side upload gate (JPG/PNG/WebP, 4 MB
+  // combined) so oversized or mislabelled files are rejected in the browser
+  // first. 4 MB keeps the whole multipart body under Vercel's 4.5 MB cap.
+  const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
   const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
   const addFiles = (newFiles: File[]) => {
@@ -117,7 +118,7 @@ export function AddProductForm() {
     if (rejected.length > 0) {
       setFieldErrors((prev) => ({
         ...prev,
-        'product-photos': `${rejected.length} file${rejected.length > 1 ? 's' : ''} skipped — JPG/PNG/WebP up to 5 MB only.`,
+        'product-photos': `${rejected.length} file${rejected.length > 1 ? 's' : ''} skipped — JPG/PNG/WebP up to 4 MB only.`,
       }));
     } else {
       clearFieldError('product-photos');
@@ -126,6 +127,14 @@ export function AddProductForm() {
     if (validFiles.length === 0) return;
 
     const combined = [...imageFiles, ...validFiles].slice(0, 4); // Max 4 photos
+    const totalBytes = combined.reduce((sum, f) => sum + f.size, 0);
+    if (totalBytes > MAX_PHOTO_BYTES) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        'product-photos': 'Combined photos must be 4 MB or less — please compress them.',
+      }));
+      return;
+    }
     setImageFiles(combined);
 
     // Create previews

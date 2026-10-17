@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
     const validatedFiles: File[] = [];
     for (const file of imageFiles) {
       if (file.size > MAX_UPLOAD_BYTES) {
-        rejected.push(`${file.name} (over 5 MB)`);
+        rejected.push(`${file.name} (over 4 MB)`);
         continue;
       }
       if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
@@ -184,8 +184,28 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json(
         {
-          error: `Some photos were rejected: ${rejected.join(', ')}. Use JPG/PNG/WebP files up to 5 MB.`,
+          error: `Some photos were rejected: ${rejected.join(', ')}. Use JPG/PNG/WebP files up to 4 MB.`,
           code: 'INVALID_UPLOADS',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Combined size gate: Vercel caps a serverless request body at 4.5 MB,
+    // so the route enforces a 4 MB total itself rather than letting the
+    // platform 413 the upload with an unhelpful message.
+    const totalBytes = validatedFiles.reduce((sum, f) => sum + f.size, 0);
+    if (totalBytes > MAX_UPLOAD_BYTES) {
+      securityLog('admin.product.upload_rejected', {
+        adminId: auth.user?.id,
+        reason: 'combined-size',
+        files: validatedFiles.length,
+      });
+      return NextResponse.json(
+        {
+          error:
+            'Combined photo size must be 4 MB or less. Please compress the photos and try again.',
+          code: 'PAYLOAD_TOO_LARGE',
         },
         { status: 400 }
       );
