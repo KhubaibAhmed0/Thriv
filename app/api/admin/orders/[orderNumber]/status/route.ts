@@ -59,7 +59,7 @@ export async function PATCH(
 
     const supabase = getServiceClient();
 
-    // 1. Fetch current order
+    // 1. Fetch current order (also the 404 gate)
     const { data: currentOrder, error: fetchError } = await supabase
       .from('orders')
       .select('id, status, payment_status')
@@ -70,91 +70,39 @@ export async function PATCH(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const updatePayload: Record<string, any> = {};
-
-    // 2. Handle order status change
+    // 2. Order status change. All transition rules, stock effects and the
+    //    order_events row live inside update_order_status() (audit F-04/F-12),
+    //    so this route can never write stock or an invalid transition again.
     if (status && status !== currentOrder.status) {
-      updatePayload.status = status;
-      if (status === 'delivered') {
-        updatePayload.delivered_at = new Date().toISOString();
+      const { error: rpcError } = await supabase.rpc('update_order_status', {
+        p_order_number: orderNumber,
+        p_new_status: status,
+        p_note: note ?? null,
+        p_actor: auth.user?.id ?? null,
+      });
+
+      if (rpcError) {
+        if (rpcError.code === 'P0002') {
+          return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+        }
+        if (rpcError.code === 'P0001') {
+          return NextResponse.json({ error: rpcError.message }, { status: 409 });
+        }
+        console.error('[/api/admin/orders/.../status] update_order_status failed:', rpcError);
+        return NextResponse.json({ error: 'Status update failed' }, { status: 500 });
       }
     }
 
-    // 3. Handle payment status change
+    // 3. Payment status is independent of fulfillment state.
     if (payment_status && payment_status !== currentOrder.payment_status) {
-      updatePayload.payment_status = payment_status;
-    }
-
-    if (Object.keys(updatePayload).length > 0) {
-      const { error: updateError } = await supabase
+      const { error: payError } = await supabase
         .from('orders')
-        .update(updatePayload)
+        .update({ payment_status })
         .eq('id', currentOrder.id);
 
-      if (updateError) {
-        console.error('[/api/admin/orders/.../status] Update failed:', updateError);
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
-      }
-
-      // If status changed, record order_event and sync product stock
-      if (status && status !== currentOrder.status) {
-        await supabase.from('order_events').insert({
-          order_id: currentOrder.id,
-          from_status: currentOrder.status,
-          to_status: status,
-          note: note || `Status updated to ${status}`,
-          created_by: auth.user?.id !== 'dev-admin' ? auth.user?.id : null,
-        });
-
-        // 4. Update product stock on dispatch ('shipped' | 'delivered') or cancellation
-        try {
-          const { data: items } = await supabase
-            .from('order_items')
-            .select('product_id, product_slug, quantity')
-            .eq('order_id', currentOrder.id);
-
-          if (items && items.length > 0) {
-            if (status === 'shipped' || status === 'delivered') {
-              // Mark product as sold out (stock = 0)
-              for (const item of items) {
-                if (item.product_id) {
-                  await supabase
-                    .from('products')
-                    .update({ stock: 0 })
-                    .eq('id', item.product_id);
-                } else if (item.product_slug) {
-                  await supabase
-                    .from('products')
-                    .update({ stock: 0 })
-                    .eq('slug', item.product_slug);
-                }
-              }
-            } else if (status === 'cancelled') {
-              // If order is cancelled, restore stock
-              for (const item of items) {
-                const filterCol = item.product_id ? 'id' : 'slug';
-                const filterVal = item.product_id || item.product_slug;
-                if (filterVal) {
-                  const { data: prod } = await supabase
-                    .from('products')
-                    .select('id, stock, is_merch')
-                    .eq(filterCol, filterVal)
-                    .maybeSingle();
-
-                  if (prod) {
-                    const restoredStock = prod.is_merch ? prod.stock + (item.quantity || 1) : 1;
-                    await supabase
-                      .from('products')
-                      .update({ stock: restoredStock })
-                      .eq('id', prod.id);
-                  }
-                }
-              }
-            }
-          }
-        } catch (stockErr) {
-          console.error('[/api/admin/orders/.../status] Product stock sync failed:', stockErr);
-        }
+      if (payError) {
+        console.error('[/api/admin/orders/.../status] Payment update failed:', payError);
+        return NextResponse.json({ error: payError.message }, { status: 500 });
       }
     }
 
