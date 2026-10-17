@@ -58,9 +58,32 @@ Each batch ships independently: branch → Vercel preview → probes → merge t
 | Local prod server, **no Supabase env** (the F-01 scenario) | `/` + `/shop` 200 · `/admin` → 307 `/admin/login` (plain and with forged cookie) · `/admin/login` 200 · `GET /api/admin/orders` **401** (plain and forged cookie) · `GET /api/admin/auth/me` **401** · `POST /api/admin/auth/login` **503** |
 | Local prod server, public env fake + **no service key** (the F-08 scenario) | `/` 200 · `/api/admin/orders` + `/me` **401** with forged token · `/admin` 307 |
 
-### Deploy verification
+### Deploy verification (2026-10-17)
 
-Recorded in the follow-up commit after the preview and production rollouts (live login flow, token-echo absence, forged-token denial, homepage health).
+**Preview** — branch `fix/b1-security-guards` deployed READY at commit `ca44f2d` (and again on the follow-up commit). Note: preview deployments on this Vercel project are behind **Vercel Authentication** (unauthenticated requests get `302 → vercel.com/sso-api`), so previews verify build/deploy mechanics; functional verification runs via the local real-backend battery below and then on production.
+
+**Local battery against the real Supabase backend** (production build, real env, rotated credentials; all requests via `curl.exe` — 11/11):
+
+| # | Check | Result |
+| :- | :--- | :--- |
+| 1 | `POST /api/admin/auth/login` (real creds) | 200, cookie set |
+| 2 | `GET /api/admin/auth/me` (cookie) | 200; `authenticated: true`; **no `token` field in payload** |
+| 3 | `GET /api/admin/auth/me` (Bearer) | 200 |
+| 4 | `GET /api/admin/orders` (cookie) | 200, 2 orders |
+| 5 | `GET /admin` (cookie) | 200 |
+| 6 | `GET /admin/products` (cookie) | 200 |
+| 7 | `GET /api/admin/orders` (forged cookie) | 401 |
+| 8 | `GET /api/admin/auth/me` (forged Bearer) | 401 |
+| 9 | `GET /admin` (forged cookie) | 307 → `/admin/login` |
+| 10 | `POST login` wrong password | 401 |
+| 11 | `POST /api/admin/auth/logout` | 200 |
+
+**Production** (`thriv-five.vercel.app`, merge commit `b166a18`) — same battery, 13/13 checks pass: homepage + shop 200 · login 200 · `/me` 200 without token echo · Bearer 200 · orders 200 (2 orders intact) · `/admin` + `/admin/products` 200 · forged cookie/Bearer 401 · forged `/admin` 307 → login · wrong password 401 · logout 200.
+
+Operational notes:
+- PowerShell 5.1 `Invoke-WebRequest` cannot reliably send manual `Cookie` headers (restricted-header handling) — all live probes were run with `curl.exe`. Use curl for future flow checks.
+- Guard failures are now logged with reasons (`[admin-auth] token rejected by Supabase Auth: …`) — this made the auth path observable during verification.
+- `/api/admin/auth/me` early-exit now honours the Bearer header as well as the cookie, consistent with `verifyAdminRequest`.
 
 ---
 
