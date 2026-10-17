@@ -1,6 +1,10 @@
-import type { Cart, CartAction, CartItem, Product } from '@/types';
+import type { Cart, CartAction, CartItem } from '@/types';
 
 export const CART_STORAGE_KEY = 'thriv_cart_v1';
+
+// Audit F-62: keep in lockstep with the SQL side — v_delivery_fee in the
+// place_order RPC (supabase/migrations/20260920_place_order_rpc.sql) and the
+// B4 note in 20261017_b4_data_truth.sql. Change both sides together.
 export const FLAT_DELIVERY_FEE = 200;
 
 export const initialCart: Cart = {

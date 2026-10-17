@@ -3,7 +3,7 @@ import { products as staticProducts } from '@/data/products';
 import type { Product } from '@/types';
 
 /**
- * Product data source (audit F-13 / F-18).
+ * Product data source (audit F-13 / F-15 / F-18).
  *
  * - Unconfigured Supabase (local dev / demo checkout-less runs): the static
  *   seed array is served so the site still renders.
@@ -12,10 +12,11 @@ import type { Product } from '@/types';
  *   shadowing the failing/empty DB with phantom seed products — phantom
  *   items lead customers into a checkout that cannot fulfil them. Failures
  *   are logged as the operator signal.
+ *
+ * Visibility is governed solely by `products.is_active` (audit F-15: the
+ * legacy hardcoded-slug exclusion was removed once the DB row itself was
+ * hidden by the B4 migration).
  */
-
-// Legacy row excluded while it still exists in the DB (removed in B4 / F-15).
-const LEGACY_HIDDEN_SLUG = 'bershka-washed-black-balloon-jeans';
 
 interface ProductRow {
   id: string;
@@ -43,7 +44,9 @@ function mapRow(row: ProductRow): Product {
     name: row.name,
     brand: row.brand,
     category: row.category,
-    subcategory: row.subcategory || (row.category === 'jeans' ? 'straight-leg' : 'anime-tees'),
+    // Audit F-10: never fabricate a subcategory — a missing value renders as
+    // unfiltered instead of silently landing the item under a wrong filter.
+    subcategory: row.subcategory || '',
     price: row.price_pkr,
     condition: (row.condition || 'Premium') as Product['condition'],
     isMerch: row.is_merch || false,
@@ -78,9 +81,7 @@ export async function getAllProducts(): Promise<Product[]> {
       return [];
     }
 
-    return (data ?? [])
-      .filter((row: ProductRow) => row.slug !== LEGACY_HIDDEN_SLUG)
-      .map(mapRow);
+    return (data ?? []).map(mapRow);
   } catch (e) {
     console.error(
       '[getAllProducts] Supabase fetch failed — returning empty catalogue:',
@@ -91,8 +92,6 @@ export async function getAllProducts(): Promise<Product[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  if (slug === LEGACY_HIDDEN_SLUG) return null;
-
   if (!isServiceConfigured()) {
     return staticProducts.find((p) => p.slug === slug) || null;
   }

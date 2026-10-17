@@ -1,20 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { STATUS_CONFIG, paymentLabel } from '@/lib/orderLabels';
 import {
   ArrowLeft,
   Phone,
   MessageCircle,
   Copy,
   Check,
-  Clock,
   CheckCircle2,
-  Truck,
-  XCircle,
-  AlertCircle,
   RefreshCw,
   FileText,
   CreditCard,
@@ -67,56 +64,8 @@ interface OrderDetail {
   events?: OrderEvent[];
 }
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; bg: string; text: string; border: string; icon: React.ComponentType<{ className?: string }> }
-> = {
-  new: {
-    label: 'New',
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-500',
-    border: 'border-amber-500/30',
-    icon: Clock,
-  },
-  confirmed: {
-    label: 'Confirmed',
-    bg: 'bg-neutral-800',
-    text: 'text-neutral-200',
-    border: 'border-neutral-700',
-    icon: CheckCircle2,
-  },
-  shipped: {
-    label: 'Shipped',
-    bg: 'bg-sky-500/10',
-    text: 'text-sky-400',
-    border: 'border-sky-500/30',
-    icon: Truck,
-  },
-  delivered: {
-    label: 'Delivered',
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-400',
-    border: 'border-emerald-500/30',
-    icon: CheckCircle2,
-  },
-  cancelled: {
-    label: 'Cancelled',
-    bg: 'bg-neutral-900',
-    text: 'text-neutral-500 line-through',
-    border: 'border-neutral-800',
-    icon: XCircle,
-  },
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  'cash-on-delivery': 'Cash on Delivery (COD)',
-  cod: 'Cash on Delivery (COD)',
-  'bank-transfer': 'Faysal Bank Transfer',
-  bank_transfer: 'Faysal Bank Transfer',
-  easypaisa: 'EasyPaisa',
-  jazzcash: 'JazzCash',
-  card: 'Card',
-};
+// Status badge styling and payment labels now live in lib/orderLabels.ts
+// (audit F-60).
 
 export default function OrderDetailClient({ orderNumber }: { orderNumber: string }) {
   const router = useRouter();
@@ -129,9 +78,10 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPayment, setUpdatingPayment] = useState(false);
 
-  const fetchOrder = async () => {
-    setLoading(true);
-    setError(null);
+  // Initial `loading` state covers the first fetch; retry callers set the
+  // spinner themselves so the effect body performs no synchronous setState
+  // (react-hooks/set-state-in-effect).
+  const fetchOrder = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/orders/${orderNumber}`);
       if (res.status === 401 || res.status === 403) {
@@ -142,6 +92,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
       if (!res.ok) {
         setError(data.error || 'Failed to fetch order details');
       } else {
+        setError(null);
         setOrder(data.order);
       }
     } catch {
@@ -149,11 +100,14 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderNumber, router]);
 
   useEffect(() => {
+    // Initial fetch on mount: state updates land after the network await; the
+    // lint rule's interprocedural heuristic treats the call as synchronous.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOrder();
-  }, [orderNumber]);
+  }, [fetchOrder]);
 
   // Copy full address for courier form
   const handleCopyAddress = () => {
@@ -473,7 +427,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
             <div>
               <p className="text-xs text-neutral-400">Payment Method</p>
               <p className="text-sm font-bold text-white mt-0.5">
-                {PAYMENT_LABELS[order.payment_method] || order.payment_method}
+                {paymentLabel(order.payment_method, 'detail') || order.payment_method}
               </p>
             </div>
 

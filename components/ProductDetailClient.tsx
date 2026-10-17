@@ -6,12 +6,10 @@ import {
   Heart,
   ShoppingBag,
   Check,
-  ShieldCheck,
   Truck,
   Sparkles,
   AlertCircle,
   ArrowRight,
-  RotateCcw,
 } from 'lucide-react';
 import type { Product } from '@/types';
 import { ProductImage } from '@/components/ProductImage';

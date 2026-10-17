@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -13,11 +13,10 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Tag,
-  CheckCircle2,
 } from 'lucide-react';
 import { AdminNavHeader } from '@/components/admin/AdminNavHeader';
 import { formatPrice } from '@/lib/formatPrice';
+import { errorMessage } from '@/lib/errors';
 
 interface DbProduct {
   id: string;
@@ -45,9 +44,10 @@ export default function AdminProductsListClient() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'jeans' | 'merch' | 'sold-out'>('all');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    setError(null);
+  // Initial `loading` state covers the first fetch; the refresh callback sets
+  // the spinner itself so the effect body performs no synchronous setState
+  // (react-hooks/set-state-in-effect).
+  const fetchProducts = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/products');
       if (!res.ok) {
@@ -55,17 +55,21 @@ export default function AdminProductsListClient() {
         throw new Error(data.error || 'Failed to fetch inventory');
       }
       const data = await res.json();
+      setError(null);
       setProducts(data.products || []);
-    } catch (err: any) {
-      setError(err?.message || 'Network error loading products');
+    } catch (err) {
+      setError(errorMessage(err, 'Network error loading products'));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    // Initial fetch on mount: state updates land after the network await; the
+    // lint rule's interprocedural heuristic treats the call as synchronous.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
   // Toggle active status
   const handleToggleActive = async (product: DbProduct) => {
@@ -142,7 +146,13 @@ export default function AdminProductsListClient() {
 
   return (
     <div className="min-h-screen bg-[#111111] text-white pb-20">
-      <AdminNavHeader onRefresh={fetchProducts} loading={loading} />
+      <AdminNavHeader
+        onRefresh={() => {
+          setLoading(true);
+          fetchProducts();
+        }}
+        loading={loading}
+      />
 
       <main className="max-w-5xl mx-auto px-4 py-6 sm:px-6 space-y-6">
         
@@ -208,7 +218,7 @@ export default function AdminProductsListClient() {
               return (
                 <button
                   key={chip.id}
-                  onClick={() => setActiveFilter(chip.id as any)}
+                  onClick={() => setActiveFilter(chip.id as 'all' | 'jeans' | 'merch' | 'sold-out')}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-colors cursor-pointer ${
                     active
                       ? 'bg-white text-[#111111] border-white'
@@ -254,7 +264,7 @@ export default function AdminProductsListClient() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredProducts.map((product) => {
-              const coverImage = product.images?.[0] || '/placeholder.png';
+              const coverImage = product.images?.[0];
               const isSoldOut = product.stock === 0;
               const isActionLoading = actionLoadingId === product.id;
 
@@ -269,7 +279,7 @@ export default function AdminProductsListClient() {
                 >
                   {/* Top: Image & Badges */}
                   <div className="relative aspect-[4/3] bg-[#222222] overflow-hidden">
-                    {coverImage && coverImage !== '/placeholder.png' ? (
+                    {coverImage ? (
                       <Image
                         src={coverImage}
                         alt={product.name}

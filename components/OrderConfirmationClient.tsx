@@ -4,24 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle, MessageCircle, ShoppingBag } from 'lucide-react';
 import { formatPrice } from '@/lib/formatPrice';
+import { ENUM_TO_CLIENT, paymentLabel } from '@/lib/orderLabels';
 import type { CartItem } from '@/types';
-
-const PAYMENT_LABELS: Record<string, string> = {
-  'cash-on-delivery': 'Cash on Delivery',
-  'bank-transfer': 'Bank Transfer',
-  'easypaisa': 'EasyPaisa',
-  'jazzcash': 'JazzCash',
-  'card': 'Card',
-};
-
-// DB enum values → the client-side ids the UI already speaks.
-const ENUM_TO_CLIENT: Record<string, string> = {
-  cod: 'cash-on-delivery',
-  bank_transfer: 'bank-transfer',
-  easypaisa: 'easypaisa',
-  jazzcash: 'jazzcash',
-  card: 'card',
-};
 
 const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -143,6 +127,9 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
         const parsed: OrderData = JSON.parse(stored);
         const savedAt = parsed?.savedAt ? Date.parse(parsed.savedAt) : NaN;
         if (Number.isFinite(savedAt) && Date.now() - savedAt <= SNAPSHOT_TTL_MS) {
+          // Mount-time external-store read (localStorage). Kept in an effect so
+          // SSR and the first client render stay identical (hydration-safe).
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setSnapshotView(snapshotToView(parsed));
         } else {
           localStorage.removeItem(key);
@@ -252,7 +239,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
                 <p className="text-xs text-[#444444] mt-0.5 leading-relaxed">
                   Transfer{' '}
                   <strong>{view ? formatPrice(view.total) : 'your total'}</strong> via{' '}
-                  {PAYMENT_LABELS[view?.paymentMethod ?? ''] ?? 'your chosen method'} and share the screenshot on WhatsApp (<strong>0324-8188616</strong>) with your order number.
+                  {paymentLabel(view?.paymentMethod) ?? 'your chosen method'} and share the screenshot on WhatsApp (<strong>0324-8188616</strong>) with your order number.
                 </p>
                 {view?.paymentMethod === 'bank-transfer' && (
                   <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
@@ -263,7 +250,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
                 )}
                 {(view?.paymentMethod === 'easypaisa' || view?.paymentMethod === 'jazzcash') && (
                   <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
-                    <p className="font-bold text-[#111111]">{PAYMENT_LABELS[view.paymentMethod]}</p>
+                    <p className="font-bold text-[#111111]">{paymentLabel(view.paymentMethod) ?? view.paymentMethod}</p>
                     <p className="text-[#444444]">Title: <span className="font-semibold text-[#111111]">HASSAN RAZA</span></p>
                     <p className="font-mono text-[#111111] select-all">Account: 0324-8188616</p>
                   </div>
@@ -342,7 +329,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
             )}
             <div>
               <p className="font-bold text-[#111111] mb-0.5">Payment</p>
-              <p>{PAYMENT_LABELS[view.paymentMethod] ?? view.paymentMethod}</p>
+              <p>{paymentLabel(view.paymentMethod) ?? view.paymentMethod}</p>
               {view.notes && (
                 <>
                   <p className="font-bold text-[#111111] mt-2 mb-0.5">Notes</p>

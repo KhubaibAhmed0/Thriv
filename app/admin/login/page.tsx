@@ -3,8 +3,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, AlertCircle, ArrowRight } from 'lucide-react';
-import { Input } from '@/components/ui/FormFields';
-import { Button } from '@/components/ui/Button';
 
 export default function AdminLoginPage() {
   const router = useRouter();

@@ -89,7 +89,7 @@ export type Province =
   | 'Azad Jammu & Kashmir'
   | 'Islamabad Capital Territory';
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered';
+export type OrderStatus = 'new' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
 export type Order = {
   orderNumber: string;

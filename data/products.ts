@@ -2,7 +2,7 @@ import type { Product } from '@/types';
 
 export const products: Product[] = [
   // ──────────────────────────────────────────────
-  // THRIFT JEANS (28 items: 26 in stock, 2 sold out)
+  // THRIFT JEANS (27 items: 25 in stock, 2 sold out)
   // All one-of-one: fixed size, stock: 1 (or 0 if sold)
   // Brands: Zara, H&M, Bershka, Calvin Klein, Old Navy
   // ──────────────────────────────────────────────
@@ -20,7 +20,7 @@ export const products: Product[] = [
     size: '32',
     sizes: null,
     stock: 1,
-    images: ['/products/zara-wide-leg-vintage-wash-denim-1.jpg'],
+    images: [],
     description: 'Heavyweight rigid denim in a faded stone wash with clean hems and wide leg draping. Cleaned and pre-sanitized in Karachi. No visible scuffs or edge fraying.',
     measurements: {
       waist: '32 in',
@@ -45,7 +45,7 @@ export const products: Product[] = [
     size: '30',
     sizes: null,
     stock: 1,
-    images: ['/products/bershka-baggy-carpenter-jeans-1.jpg'],
+    images: [],
     description: 'Utility skater fit with utility hammer loop and reinforced back pockets in mid-blue wash. Soft broken-in cotton feel with zero structural flaws.',
     measurements: {
       waist: '30 in',
@@ -69,7 +69,7 @@ export const products: Product[] = [
     size: '34',
     sizes: null,
     stock: 1,
-    images: ['/products/calvin-klein-straight-cut-indigo-jeans-1.jpg'],
+    images: [],
     description: 'Deep indigo raw-look denim with signature Calvin Klein leather patch at back waistband. High density 13.5oz weave with sharp tailored leg taper.',
     measurements: {
       waist: '34 in',
@@ -93,7 +93,7 @@ export const products: Product[] = [
     size: '31',
     sizes: null,
     stock: 1,
-    images: ['/products/hm-relaxed-light-blue-skater-jeans-1.jpg'],
+    images: [],
     description: 'Sun-bleached sky blue wash with relaxed thigh room and clean pooling at shoes. Minor surface fade characteristic of authentic pre-loved denim.',
     measurements: {
       waist: '31 in',
@@ -117,7 +117,7 @@ export const products: Product[] = [
     size: '28',
     sizes: null,
     stock: 1,
-    images: ['/products/zara-raw-edge-flared-denim-1.jpg'],
+    images: [],
     description: 'High-waisted fit with subtle bootcut flare and finished raw hem. Pure cotton structure with zero elastane sagging.',
     measurements: {
       waist: '28 in',
@@ -141,7 +141,7 @@ export const products: Product[] = [
     size: '33',
     sizes: null,
     stock: 1,
-    images: ['/products/old-navy-loose-fit-workwear-jeans-1.jpg'],
+    images: [],
     description: 'Durable heavyweight cotton denim built for everyday streetwear wear. Double-needle stitch lines and comfortable room in thighs.',
     measurements: {
       waist: '33 in',
@@ -165,7 +165,7 @@ export const products: Product[] = [
     size: '27',
     sizes: null,
     stock: 1,
-    images: ['/products/calvin-klein-high-rise-mom-jeans-1.jpg'],
+    images: [],
     description: 'Vintage 90s silhouette with high cinch waist and tapered ankle profile. Authentic CK metal button rivets with pristine inner labeling.',
     measurements: {
       waist: '27 in',
@@ -189,7 +189,7 @@ export const products: Product[] = [
     size: '32',
     sizes: null,
     stock: 1,
-    images: ['/products/zara-distressed-knee-straight-jeans-1.jpg'],
+    images: [],
     description: 'Mid-blue straight cut with tasteful horizontal knee slit distressing. Washed soft cotton with sturdy pocket bags.',
     measurements: {
       waist: '32 in',
@@ -213,7 +213,7 @@ export const products: Product[] = [
     size: '30',
     sizes: null,
     stock: 1,
-    images: ['/products/hm-washed-grey-cargo-denim-1.jpg'],
+    images: [],
     description: 'Acid washed slate grey with dual side bellow cargo pockets. Clean metal zipper fly and reinforced belt loops.',
     measurements: {
       waist: '30 in',
@@ -237,7 +237,7 @@ export const products: Product[] = [
     size: '34',
     sizes: null,
     stock: 1,
-    images: ['/products/old-navy-classic-straight-dark-wash-1.jpg'],
+    images: [],
     description: 'Clean dark wash straight denim with amber contrast stitching. Reliable everyday pair with minimal fading.',
     measurements: {
       waist: '34 in',
@@ -261,7 +261,7 @@ export const products: Product[] = [
     size: '31',
     sizes: null,
     stock: 1,
-    images: ['/products/bershka-skater-fit-dirty-wash-denim-1.jpg'],
+    images: [],
     description: 'Y2K tinted yellow-cast dirty wash in an ultra wide leg drape. Cleaned and pre-washed, no stains or odor.',
     measurements: {
       waist: '31 in',
@@ -285,7 +285,7 @@ export const products: Product[] = [
     size: '32',
     sizes: null,
     stock: 1,
-    images: ['/products/calvin-klein-slim-taper-black-jeans-1.jpg'],
+    images: [],
     description: 'Pitch black stretch-cotton twill with tonal matte black hardware. Retains 95% of original rich saturation.',
     measurements: {
       waist: '32 in',
@@ -309,7 +309,7 @@ export const products: Product[] = [
     size: '29',
     sizes: null,
     stock: 1,
-    images: ['/products/zara-pleated-wide-leg-trousers-denim-1.jpg'],
+    images: [],
     description: 'Tailored dress-cut denim featuring front pleats and draped flowing leg profile. Elegant streetwear hybrid.',
     measurements: {
       waist: '29 in',
@@ -333,7 +333,7 @@ export const products: Product[] = [
     size: '33',
     sizes: null,
     stock: 1,
-    images: ['/products/hm-vintage-regular-stone-wash-1.jpg'],
+    images: [],
     description: 'Classic 5-pocket blue denim with natural whiskering across the lap. Sturdy cotton construction with years of life left.',
     measurements: {
       waist: '33 in',
@@ -357,7 +357,7 @@ export const products: Product[] = [
     size: '32',
     sizes: null,
     stock: 1,
-    images: ['/products/bershka-multi-pocket-utility-denim-1.jpg'],
+    images: [],
     description: 'Tactical multi-pocket streetwear denim in a washed graphite tint. Flap closures and reinforced knee patches.',
     measurements: {
       waist: '32 in',
@@ -381,7 +381,7 @@ export const products: Product[] = [
     size: '28',
     sizes: null,
     stock: 1,
-    images: ['/products/old-navy-high-waisted-cropped-flare-1.jpg'],
+    images: [],
     description: 'Ankle length cropped silhouette with soft kick-flare opening. Soft stretch denim with comfortable day-long hold.',
     measurements: {
       waist: '28 in',
@@ -405,7 +405,7 @@ export const products: Product[] = [
     size: '30',
     sizes: null,
     stock: 1,
-    images: ['/products/zara-acid-wash-relaxed-denim-1.jpg'],
+    images: [],
     description: 'Bold 80s inspired marble acid wash pattern. Heavy cotton fabric with solid original hardware and no pocket wear.',
     measurements: {
       waist: '30 in',
@@ -429,7 +429,7 @@ export const products: Product[] = [
     size: '34',
     sizes: null,
     stock: 1,
-    images: ['/products/calvin-klein-standard-straight-light-indigo-1.jpg'],
+    images: [],
     description: 'Premium light indigo shade with subtle hand-sanded highlights along the thigh. Clean hemline and original silver rivets.',
     measurements: {
       waist: '34 in',
@@ -453,7 +453,7 @@ export const products: Product[] = [
     size: '31',
     sizes: null,
     stock: 1,
-    images: ['/products/hm-baggy-fit-ecru-natural-denim-1.jpg'],
+    images: [],
     description: 'Unbleached natural ecru cream denim with subtle organic seed flecks. Flawlessly cleaned, completely stain-free.',
     measurements: {
       waist: '31 in',
@@ -477,7 +477,7 @@ export const products: Product[] = [
     size: '27',
     sizes: null,
     stock: 1,
-    images: ['/products/bershka-extreme-wide-leg-blue-jeans-1.jpg'],
+    images: [],
     description: 'Ultra-wide palazzo denim drape with high waist fit. Washed medium blue cotton with zero knee bagging.',
     measurements: {
       waist: '27 in',
@@ -501,7 +501,7 @@ export const products: Product[] = [
     size: '29',
     sizes: null,
     stock: 1,
-    images: ['/products/old-navy-boyfriend-slouch-jeans-1.jpg'],
+    images: [],
     description: 'Easy relaxed mid-rise fit intended to sit loose on the hips. Soft worn-in handfeel with rollable cuff hems.',
     measurements: {
       waist: '29 in',
@@ -525,7 +525,7 @@ export const products: Product[] = [
     size: '33',
     sizes: null,
     stock: 1,
-    images: ['/products/zara-faded-washed-charcoal-relaxed-denim-1.jpg'],
+    images: [],
     description: 'Sun-faded mineral black wash with relaxed silhouette and gentle taper. Substantial 100% cotton weave.',
     measurements: {
       waist: '33 in',
@@ -549,7 +549,7 @@ export const products: Product[] = [
     size: '30',
     sizes: null,
     stock: 1,
-    images: ['/products/calvin-klein-vintage-medium-wash-straight-1.jpg'],
+    images: [],
     description: 'Archival 90s CK cut with classic contrast stitching, embossed silver button, and heavy 14oz rigid denim body.',
     measurements: {
       waist: '30 in',
@@ -573,7 +573,7 @@ export const products: Product[] = [
     size: '28',
     sizes: null,
     stock: 1,
-    images: ['/products/hm-wide-leg-cargo-pocket-denim-1.jpg'],
+    images: [],
     description: 'Utility pockets stitched flush along outer thigh seams on a relaxed wide leg frame. Clean pale blue wash.',
     measurements: {
       waist: '28 in',
@@ -597,7 +597,7 @@ export const products: Product[] = [
     size: '32',
     sizes: null,
     stock: 1,
-    images: ['/products/bershka-contrast-stitch-skater-jeans-1.jpg'],
+    images: [],
     description: 'Dark blue denim accented with stark white contrast top-stitching throughout. Deep front pockets and relaxed seat.',
     measurements: {
       waist: '32 in',
@@ -623,7 +623,7 @@ export const products: Product[] = [
     size: '32',
     sizes: null,
     stock: 0, // SOLD OUT
-    images: ['/products/zara-archive-patchwork-reconstructed-jeans-1.jpg'],
+    images: [],
     description: 'Dual-tone panelled denim featuring contrasting wash blocks on knees and calves. One of one piece, previously sold.',
     measurements: {
       waist: '32 in',
@@ -647,7 +647,7 @@ export const products: Product[] = [
     size: '26',
     sizes: null,
     stock: 0, // SOLD OUT
-    images: ['/products/calvin-klein-90s-classic-tapered-mom-denim-1.jpg'],
+    images: [],
     description: 'Original vintage high cinch silhouette with archival Calvin Klein waist patch. Sourced in Karachi, now marked sold.',
     measurements: {
       waist: '26 in',
@@ -659,7 +659,7 @@ export const products: Product[] = [
   },
 
   // ──────────────────────────────────────────────
-  // IN-HOUSE MERCH: ANIME GRAPHIC TEES (5 designs)
+  // IN-HOUSE MERCH: ANIME GRAPHIC TEES (4 designs)
   // Multi-size (S, M, L, XL), real stock (10–35), isMerch: true
   // Prices: 999 – 2499
   // ──────────────────────────────────────────────
@@ -677,7 +677,7 @@ export const products: Product[] = [
     size: null,
     sizes: ['S', 'M', 'L', 'XL'],
     stock: 28,
-    images: ['/products/akira-neo-tokyo-cyberpunk-tee-1.jpg'],
+    images: [],
     description: 'Custom 240 GSM combed cotton heavyweight tee featuring screenprinted Neo-Tokyo highway explosion graphic on the back with minimal chest kanji. Boxy streetwear drape designed to pair with baggy denim.',
     measurements: {
       chest: '46 in (L)',
@@ -701,7 +701,7 @@ export const products: Product[] = [
     size: null,
     sizes: ['S', 'M', 'L', 'XL'],
     stock: 22,
-    images: ['/products/evangelion-unit-01-schematic-tee-1.jpg'],
+    images: [],
     description: 'Technical wireframe blueprint graphic of Test Type Unit-01 printed in neon violet and signal green ink over washed carbon black cotton. Pre-shrunk tight collar ribbing that does not bacon.',
     measurements: {
       chest: '45 in (L)',
@@ -725,7 +725,7 @@ export const products: Product[] = [
     size: null,
     sizes: ['S', 'M', 'L', 'XL'],
     stock: 18,
-    images: ['/products/berserk-brand-of-sacrifice-vintage-wash-tee-1.jpg'],
+    images: [],
     description: 'Distressed stone-washed charcoal grey tee with cracked vintage-style Brand of Sacrifice insignia centered on chest and manga panels spanning the lower hem. 100% thick breathable cotton.',
     measurements: {
       chest: '46 in (L)',
@@ -748,7 +748,7 @@ export const products: Product[] = [
     size: null,
     sizes: ['S', 'M', 'L', 'XL'],
     stock: 35,
-    images: ['/products/cowboy-bebop-swordfish-jazz-noir-tee-1.jpg'],
+    images: [],
     description: 'Warm cream ecru tee showcasing Spike Spiegel with the iconic "See You Space Cowboy" typography. High-density water-based ink that stays soft to touch even after repeated washing.',
     measurements: {
       chest: '44 in (L)',
@@ -758,25 +758,3 @@ export const products: Product[] = [
     colors: ['#F3EFE6', '#1E293B'],
   },
 ];
-
-export function getProductBySlug(slug: string): Product | undefined {
-  return products.find((p) => p.slug === slug);
-}
-
-export function getProductsByCategory(category: string): Product[] {
-  if (category === 'all') return products;
-  return products.filter((p) => p.category === category);
-}
-
-export function getFeaturedProducts(): Product[] {
-  return products.filter((p) => p.isFeatured);
-}
-
-export function getRelatedProducts(currentSlug: string, count = 3): Product[] {
-  const current = getProductBySlug(currentSlug);
-  if (!current) return products.slice(0, count);
-
-  return products
-    .filter((p) => p.slug !== currentSlug && (p.category === current.category || p.brand === current.brand))
-    .slice(0, count);
-}

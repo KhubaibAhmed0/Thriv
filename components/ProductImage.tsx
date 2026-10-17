@@ -9,7 +9,6 @@ interface ProductImageProps {
   slug: string;
   brand: string;
   subcategory: string;
-  imageIndex?: number;
   aspectRatio?: AspectRatio;
   alt?: string;
   className?: string;
@@ -46,7 +45,6 @@ export function ProductImage({
   slug,
   brand,
   subcategory,
-  imageIndex = 1,
   aspectRatio = '4:5',
   alt,
   className = '',
@@ -54,7 +52,11 @@ export function ProductImage({
   imageUrl,
 }: ProductImageProps) {
   const [imgError, setImgError] = useState(false);
-  const src = imageUrl || `/products/${slug}-${imageIndex}.jpg`;
+
+  // Audit F-16: never fabricate a local image path. The old fallback guessed
+  // `/products/<slug>-N.jpg` — files that never existed — so every seed
+  // product rendered a broken image. Without a URL we render an explicit
+  // "photo coming soon" tile instead of a silent error state.
 
   const hue = slugToHue(slug);
   const lightness = slugToLightness(slug);
@@ -63,7 +65,7 @@ export function ProductImage({
 
   const altText = alt ?? `${brand} ${subcategory}`;
 
-  if (!imgError) {
+  if (imageUrl && !imgError) {
     return (
       <div
         className={[
@@ -75,7 +77,7 @@ export function ProductImage({
           .join(' ')}
       >
         <Image
-          src={src}
+          src={imageUrl}
           alt={altText}
           fill
           unoptimized
@@ -88,7 +90,7 @@ export function ProductImage({
     );
   }
 
-  // CSS placeholder — shown when real image is missing
+  // Explicit placeholder state — shown until a real photo is uploaded (F-16).
   return (
     <div
       className={[
@@ -114,6 +116,12 @@ export function ProductImage({
           style={{ color: placeholderText, opacity: 0.75 }}
         >
           {subcategory}
+        </p>
+        <p
+          className="text-[9px] font-medium uppercase tracking-wider leading-tight mt-1"
+          style={{ color: placeholderText, opacity: 0.6 }}
+        >
+          Photo coming soon
         </p>
       </div>
     </div>

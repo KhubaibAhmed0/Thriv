@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { errorMessage } from '@/lib/errors';
 
 export async function PATCH(
   req: NextRequest,
@@ -28,6 +29,9 @@ export async function PATCH(
     if (typeof body.is_active === 'boolean') allowedUpdates.is_active = body.is_active;
     if (typeof body.stock === 'number') allowedUpdates.stock = body.stock;
     if (typeof body.price_pkr === 'number') allowedUpdates.price_pkr = body.price_pkr;
+    // Audit F-10: subcategory / is_featured are now real columns and editable.
+    if (typeof body.subcategory === 'string') allowedUpdates.subcategory = body.subcategory.trim() || null;
+    if (typeof body.is_featured === 'boolean') allowedUpdates.is_featured = body.is_featured;
 
     if (Object.keys(allowedUpdates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
@@ -77,8 +81,8 @@ export async function PATCH(
     }
 
     return NextResponse.json({ success: true, product: updated });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ error: errorMessage(err, 'Server error') }, { status: 500 });
   }
 }
 
@@ -112,7 +116,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, deletedId: id });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ error: errorMessage(err, 'Server error') }, { status: 500 });
   }
 }
