@@ -15,8 +15,11 @@ export const CATEGORY_VALUES = ['jeans', 'graphic-tees'] as const;
 export const CONDITION_VALUES = ['Premium', 'Excellent', 'Very Good'] as const;
 export const MERCH_SIZE_VALUES = ['S', 'M', 'L', 'XL'] as const;
 
-/** Max photo size — mirrors the bucket's 5 MB file_size_limit (F-53). */
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+/** Max photo size — Vercel rejects request bodies over 4.5 MB, so the app's
+ *  own gate (4 MB combined, see the POST route) is set below that on
+ *  purpose: the admin gets a clear 400 message instead of a platform 413.
+ *  Also stays under the bucket's 5 MB per-file cap. (Audit F-53.) */
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 /** Defensive cap; the form UI offers 4. */
 export const MAX_PRODUCT_PHOTOS = 8;
