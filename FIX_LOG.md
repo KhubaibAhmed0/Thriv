@@ -266,6 +266,82 @@ Operational notes:
 
 ---
 
-## Batches B5–B6 — pending
+## Batch B5 (part a) — Storefront UX & accessibility
 
-Applying in report order: B5 (UX/a11y), B6 (hardening; F-48 already closed in B3). Each will get its own section here with the same evidence format.
+**Findings closed in this deploy:** F-22 *(storefront half)*, F-23, F-24, F-25, F-26, F-27 (also closes F-63), F-30, F-31, F-33, F-34 *(storefront half)*, F-40, F-66, F-67 *(storefront half)*, F-68 *(core palette)*, F-70, F-71, F-72, F-73 *(storefront half)*, F-74, F-75, F-76, F-79 *(data + public display half)*, F-80, F-86 *(storefront half)*
+**Branch:** `fix/b5a-storefront-ux`
+
+### What was wrong
+
+| Finding | Problem |
+| :--- | :--- |
+| F-22 | Add-product form ships fabricated measurement/size defaults, and the PDP never says when measurements are missing. |
+| F-23 | "Complete The Fit" arrows had no handlers and copy named a different product on every PDP. |
+| F-24 | Wishlist heart was a no-op (component state only, not persisted, no wishlist page). |
+| F-25 | No `not-found.tsx` / `error.tsx` / `global-error.tsx` — unknown slugs got a bare unbranded Next error. |
+| F-26 | Confirmation + FAQ claimed an email was sent although email is a silent stub without `RESEND_API_KEY`. |
+| F-27 / F-63 | `/styleguide` was publicly reachable and linked dead components; no `robots.txt`/`sitemap.xml`; three orphaned `ui/` files. |
+| F-30 | `#9A9A9A` muted token used as text = 2.4–2.8:1 (~120 usages) — sitewide WCAG 1.4.3 failure. |
+| F-31 | No `prefers-reduced-motion` support anywhere (hero transitions, pulses). |
+| F-33 | Mobile menu button's `focus:outline-none` killed the global focus ring. |
+| F-34 / F-67 | Three competing dropdown patterns; the storefront one had no keyboard/AT semantics. |
+| F-40 | Condition grades shown but never explained where shown (definitions buried in FAQ). |
+| F-66 | No `og:image`/`twitter:card` — WhatsApp/Instagram shares rendered as bare text links. |
+| F-68 | Design tokens declared then ignored (~1,100 hardcoded hex literals). |
+| F-70 | No `aria-live` regions for cart mutations / filter result counts. |
+| F-71 | No social block for an Instagram-first brand. |
+| F-72 | Fake "4-of-5" rating dots rendered as 5 dots — reads as a broken score. |
+| F-73 | Touch targets below 44px: hero dots 6px, arrows 36px, hearts 32px, CTAs ~28px, steppers 28px. |
+| F-74 | WhatsApp FAB overlapped the primary CTA on cart/checkout/confirmation; no safe-area inset. |
+| F-75 | FAB pre-filled message was generic even on high-intent PDPs. |
+| F-76 | No "how to measure yourself" guide — the top pre-purchase question for vintage denim. |
+| F-79 | No tracking-number/courier field although confirmation + FAQ promised one. |
+| F-80 | Heading-level skips (h1→h3) on home/shop/cart/PDP; footer started at h4. |
+| F-86 | Polish bundle: dead Tailwind classes, public footer admin link, dash leftovers, mobile header a11y. |
+
+### Changes
+
+- **Design tokens (F-68/F-30)** — new `--color-muted-text: #67635D` (≥4.5:1 on light surfaces; `muted` is now reserved for decorative hairlines/dots), plus `--color-card-hover` and `--color-badge-sold-border`. Scripted exact-match migration (`b5_tokenize.py`, dry-run report kept) replaced **641 utility-`[#hex]` classes across 38 files** with theme tokens; class-level hex literals dropped from 949 to ~201, and everything left in the storefront is either an inline style (OG images, `global-error`) or a JS palette value, not a stray class. Admin dark shades are queued for part b.
+- **Real wishlist (F-24)** — new `components/WishlistProvider.tsx` (localStorage `thriv_wishlist_v1`), new `/wishlist` page (noindex), header heart link + count pill, `aria-pressed` hearts on cards and PDP.
+- **Truthful email copy (F-26)** — `lib/email.ts` stub now returns `success: false` and exports `isEmailConfigured()`; both `/api/orders` responses carry `email_enabled`; the confirmation page and FAQ only promise a receipt when email delivery is actually switched on.
+- **Order tracking (F-79)** — new migration `20261017_b5_order_tracking.sql` adds `orders.courier` + `orders.tracking_number` (applied live); the public lookup returns both; the confirmation page shows the real number once dispatched (admin input lands in part b).
+- **ShopTheLook (F-23)** — rewritten: fake arrows and "Look 01" copy removed; copy is derived from real items (brands, item count) and the section hides when empty.
+- **Branded states + SEO (F-25/F-27/F-66)** — new `not-found`/`error`/`global-error` pages, `robots.txt` (disallows `/admin`, `/api`, `/cart`, `/checkout`, `/order`, `/wishlist`), force-dynamic `sitemap.xml` (36 URLs), root + per-product `opengraph-image` (1200×630 PNG via `next/og`), `twitter: summary_large_image`. `/styleguide` and the orphaned `ui/Button`, `ui/FilterChip`, `ui/FormFields` deleted. Canonical origin moved to `lib/site-url.ts` (`NEXT_PUBLIC_SITE_URL`, default = live Vercel URL).
+- **A11y (F-31/F-33/F-40/F-70/F-73/F-74/F-80)** — global `prefers-reduced-motion` block + JS `scrollBy` behavior check; 44px targets (hero dots/arrows, card + PDP hearts, card CTA, steppers, YMAL arrows, FAB); focus-visible restored on the mobile menu toggle; `role="status"` live regions for cart mutations and filter counts; sr-only section headings remove all h-level skips; grade note + `/faq#condition-grades` anchor on the PDP; FAB gets safe-area inset and a compact icon-only mode on cart/checkout/order pages; per-product FAB message (F-75); "How to measure yourself" details guide (F-76).
+- **Honesty pass (F-16/F-71/F-72)** — fake rating dots removed; "Follow the Drops" band links the real `@thriv.pk` Instagram + WhatsApp; placeholder tiles darken their text to a ≥5.2:1 worst case, and sold-out cards no longer apply a whole-card 80% opacity (which had dropped every label below 4.5:1).
+- **Forms/UX (F-34/F-67/F-86)** — `CustomDropdown` is now a styled native `<select>` (keyboard/AT semantics for free); new shop search field + `role="status"` result count; dead classes removed; footer admin link removed; dash/formatting fixes (contact, FAQ); header mobile menu gets `aria-expanded`/`aria-controls` and Escape-to-close.
+
+### Operational actions taken
+
+- Migration applied to the live DB via `psycopg` after a rolled-back dry run (both columns verified inside the transaction first). Post-apply state: `courier` + `tracking_number` present, order row count unchanged (2).
+- Canonical origin verified against DNS + the Vercel API: `thriv.pk` is **not** attached to any DNS record or Vercel project today, so metadata/sitemap/robots/OG default to the live `https://thriv-five.vercel.app`. Attaching the domain later needs only the `NEXT_PUBLIC_SITE_URL` env var — no code change (flagged below).
+
+### Verification
+
+| Check | Result |
+| :--- | :--- |
+| `npx tsc --noEmit` | ✓ clean |
+| `npx eslint .` | ✓ 0 problems |
+| `npm run build` | ✓ clean (new routes present: 404/error/global-error, robots, sitemap, wishlist, both OG images) |
+| B5 route probes (local, real backend) | ✓ **32/32**: robots, sitemap 36 URLs, both OG images as PNG, branded 404s, wishlist, FAQ anchor, tracking lookup, social band, PDP extras, contact copy, cart live region |
+| B3 regression battery (local) | ✓ **12/12** |
+| Admin API battery (local) | ✓ **11/11** |
+| Lighthouse (local Chromium) | ✓ `/shop` and PDP: **accessibility 100, best-practices 100, SEO 100**, 0 failing audits |
+| Browser (local, real Chromium) | ✓ shop: 31 tiles, 3 native selects, `role="status"` pill; home: hero dots/arrows 44px; PDP: heart 44px + `aria-pressed`, steppers 44px, details toggle, add-to-cart live announcement; **wishlist end-to-end** (save → header count → `/wishlist` card → reload persistence → remove → empty state); 0 console errors |
+
+### Deploy verification (2026-10-17)
+
+**Preview** — branch commits `b557807` and `6dcbc77` deployed READY (`thriv-4qbc4486p-…`, `thriv-1yu3j97z1-…vercel.app`); previews on this project are behind Vercel Authentication, so mechanics only.
+
+**Production** — merge commit `9b487f1`, deployment READY (`thriv-ok5qgki5o-…vercel.app`). Against `thriv-five.vercel.app`:
+- B5 route probes: **32/32** — both OG endpoints return PNG, branded 404s for unknown page + slug, order lookup now returns `tracking_number`/`courier`/`email_enabled`.
+- B3 regression battery: **12/12** (rate-limit case skipped so the operator IP stays usable).
+- Metadata: `og:image` resolves to an absolute `…/opengraph-image` PNG (1200×630) with `twitter:card summary_large_image`.
+
+> Flagged for the owner (non-automatable): **attach a custom domain**. `thriv.pk` doesn't resolve today; once it is added in Vercel, set `NEXT_PUBLIC_SITE_URL=https://thriv.pk` and every canonical/sitemap/OG URL follows. The social band links the real Instagram handle — embedding real IG posts still needs owner-provided post URLs.
+
+---
+
+## Batch B5 (part b) — pending
+
+Admin UX/polish, second deploy cycle of B5: F-22 (form defaults + server validation), F-32, F-34/F-67 (admin dropdown), F-35–F-39, F-68 (admin dark shades), F-73 (admin targets), F-77, F-78, F-79 (admin tracking input), F-81, F-86 (admin bits + payment/currency drift). Then B6 hardening (F-48 already closed in B3). Each gets the same evidence format in this log.
