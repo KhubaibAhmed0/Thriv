@@ -2,6 +2,8 @@ import type { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { getSupabasePublicEnv } from '@/lib/supabase-env';
+import { ADMIN_COOKIE_NAME } from '@/lib/admin-cookie';
+import { securityLog } from '@/lib/security-log';
 
 export interface AdminUser {
   id: string;
@@ -54,6 +56,9 @@ export async function verifyAdminToken(
         '[admin-auth] token rejected by Supabase Auth:',
         error?.message ?? 'no user returned'
       );
+      // F-46: audit invalid tokens — once per failed request is bounded
+      // (the browser lands on the login page after one redirect).
+      securityLog('auth.denied', { reason: 'invalid-token' });
       return { authorized: false };
     }
 
@@ -70,6 +75,7 @@ export async function verifyAdminToken(
     }
 
     if (!adminRow) {
+      securityLog('auth.denied', { reason: 'not-admin', userId: user.id });
       return { authorized: false };
     }
 
@@ -89,7 +95,7 @@ export async function verifyAdminRequest(req: NextRequest): Promise<{
   user?: AdminUser;
 }> {
   const token =
-    req.cookies.get('thriv_admin_token')?.value ||
+    req.cookies.get(ADMIN_COOKIE_NAME)?.value ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
   return verifyAdminToken(token);

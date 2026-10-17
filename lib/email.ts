@@ -31,6 +31,20 @@ export function isEmailConfigured(): boolean {
   return Boolean(apiKey && apiKey !== '<resend_api_key>');
 }
 
+/**
+ * Audit F-82: the confirmation email is plain text, so HTML escaping is
+ * not the concern — newline/control-character spoofing is. Customer-supplied
+ * strings (name, address) and catalogue strings are flattened to a single
+ * line and length-capped before interpolation.
+ */
+function sanitizeEmailLine(value: string, maxLen = 160): string {
+  return value
+    .replace(/[\r\n\t\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, maxLen);
+}
+
 export async function sendOrderConfirmationEmail(params: SendOrderEmailParams): Promise<{
   success: boolean;
   stub?: boolean;
@@ -48,18 +62,24 @@ export async function sendOrderConfirmationEmail(params: SendOrderEmailParams): 
     return { success: false, stub: true };
   }
 
+  const safeName = sanitizeEmailLine(params.customerName, 80);
+  const safeAddress = sanitizeEmailLine(params.deliveryAddress, 240);
+
   const itemsList = params.items
-    .map((item) => `- ${item.name || item.product_slug} x${item.quantity}`)
+    .map(
+      (item) =>
+        `- ${sanitizeEmailLine(item.name || item.product_slug || 'Item', 120)} x${item.quantity}`
+    )
     .join('\n');
 
   const textBody = `
-Assalam o Alaikum ${params.customerName},
+Assalam o Alaikum ${safeName},
 
 Thank you for your order with Thriv (@thriv.pk).
 
 Order Number: ${params.orderNumber}
 Total: Rs ${params.totalPkr.toLocaleString()}
-Delivery Address: ${params.deliveryAddress}
+Delivery Address: ${safeAddress}
 
 Items:
 ${itemsList}

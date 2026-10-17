@@ -100,8 +100,29 @@ export function AddProductForm() {
     addFiles(files);
   };
 
+  // Audit F-53: mirror the server-side upload gate (JPG/PNG/WebP, 5 MB) so
+  // oversized or mislabelled files are rejected in the browser first.
+  const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+  const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
   const addFiles = (newFiles: File[]) => {
-    const validFiles = newFiles.filter((f) => f.type.startsWith('image/'));
+    const rejected = newFiles.filter(
+      (f) => !ALLOWED_PHOTO_TYPES.includes(f.type) || f.size > MAX_PHOTO_BYTES
+    );
+    const validFiles = newFiles.filter(
+      (f) =>
+        ALLOWED_PHOTO_TYPES.includes(f.type) && f.size > 0 && f.size <= MAX_PHOTO_BYTES
+    );
+
+    if (rejected.length > 0) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        'product-photos': `${rejected.length} file${rejected.length > 1 ? 's' : ''} skipped — JPG/PNG/WebP up to 5 MB only.`,
+      }));
+    } else {
+      clearFieldError('product-photos');
+    }
+
     if (validFiles.length === 0) return;
 
     const combined = [...imageFiles, ...validFiles].slice(0, 4); // Max 4 photos

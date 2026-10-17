@@ -205,7 +205,14 @@ CREATE POLICY "order_events: admin insert"
 
 -- ── 7. REALTIME ─────────────────────────────────────────────────────
 -- Allows the admin portal to subscribe to new order events in real time.
-ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+-- (As of B6 the admin UI polls instead; the B6 hardening migration removes
+-- orders from the publication. Kept here, re-runnably, for history.)
+-- Audit F-56: ALTER PUBLICATION ADD TABLE errors if the table is already a
+-- member — wrap it so this file is genuinely safe to re-run.
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 
 -- ── 8. PRODUCT SEED DATA ─────────────────────────────────────────────
