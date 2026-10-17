@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
+import { ADMIN_COOKIE_NAME } from '@/lib/admin-cookie';
 
 /**
  * proxy.ts — Next.js 16 successor of `middleware.ts` (audit F-43).
@@ -12,7 +13,7 @@ import { verifyAdminRequest } from '@/lib/admin-auth';
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isLoginPage = pathname === '/admin/login';
-  const token = req.cookies.get('thriv_admin_token')?.value;
+  const token = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
 
   if (!token) {
     if (isLoginPage) return NextResponse.next();
@@ -26,7 +27,7 @@ export async function proxy(req: NextRequest) {
     const response = isLoginPage
       ? NextResponse.next()
       : NextResponse.redirect(new URL('/admin/login', req.url));
-    response.cookies.delete('thriv_admin_token');
+    response.cookies.delete(ADMIN_COOKIE_NAME);
     return response;
   }
 

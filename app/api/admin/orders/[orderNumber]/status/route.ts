@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
-import { errorMessage } from '@/lib/errors';
+import { securityLog } from '@/lib/security-log';
 
 const UpdateStatusSchema = z.object({
   status: z
@@ -96,11 +96,19 @@ export async function PATCH(
           return NextResponse.json({ error: 'Order not found' }, { status: 404 });
         }
         if (rpcError.code === 'P0001') {
+          // Transition guard raised by our own RPC — message is curated.
           return NextResponse.json({ error: rpcError.message }, { status: 409 });
         }
         console.error('[/api/admin/orders/.../status] update_order_status failed:', rpcError);
         return NextResponse.json({ error: 'Status update failed' }, { status: 500 });
       }
+
+      securityLog('admin.order.status', {
+        adminId: auth.user?.id,
+        orderNumber,
+        from: currentOrder.status,
+        to: status,
+      });
     }
 
     // 3. Payment status is independent of fulfillment state.
@@ -112,8 +120,15 @@ export async function PATCH(
 
       if (payError) {
         console.error('[/api/admin/orders/.../status] Payment update failed:', payError);
-        return NextResponse.json({ error: payError.message }, { status: 500 });
+        return NextResponse.json({ error: 'Payment update failed' }, { status: 500 });
       }
+
+      securityLog('admin.order.payment', {
+        adminId: auth.user?.id,
+        orderNumber,
+        from: currentOrder.payment_status,
+        to: payment_status,
+      });
     }
 
     // 4. Dispatch details (audit F-79): courier + tracking number are stored
@@ -133,8 +148,14 @@ export async function PATCH(
 
       if (dispatchError) {
         console.error('[/api/admin/orders/.../status] Dispatch update failed:', dispatchError);
-        return NextResponse.json({ error: dispatchError.message }, { status: 500 });
+        return NextResponse.json({ error: 'Dispatch update failed' }, { status: 500 });
       }
+
+      securityLog('admin.order.dispatch', {
+        adminId: auth.user?.id,
+        orderNumber,
+        fields: Object.keys(dispatchUpdates),
+      });
     }
 
     return NextResponse.json({
@@ -149,9 +170,6 @@ export async function PATCH(
     });
   } catch (err) {
     console.error('[/api/admin/orders/.../status] Error:', err);
-    return NextResponse.json(
-      { error: errorMessage(err, 'Internal server error') },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

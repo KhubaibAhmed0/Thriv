@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { isSupabasePublicConfigured } from '@/lib/supabase-env';
+import { ADMIN_COOKIE_NAME } from '@/lib/admin-cookie';
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieToken = req.cookies.get('thriv_admin_token')?.value;
+    const cookieToken = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
     const bearerToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
     if (!cookieToken && !bearerToken) {
       return NextResponse.json({ authenticated: false }, { status: 401 });

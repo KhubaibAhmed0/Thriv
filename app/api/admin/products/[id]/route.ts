@@ -1,7 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
-import { errorMessage } from '@/lib/errors';
+import { UpdateProductSchema } from '@/lib/admin-product-schema';
+import { securityLog } from '@/lib/security-log';
+
+/** Public URL prefix for the `products` bucket. */
+const PUBLIC_MARKER = '/storage/v1/object/public/products/';
+
+/**
+ * Extract storage object paths from the product's `images` array so the
+ * DELETE handler can remove the files alongside the row (audit F-52).
+ * Non-matching URLs are ignored; `..` is rejected (defence in depth).
+ */
+function storageObjectPaths(images: unknown): string[] {
+  if (!Array.isArray(images)) return [];
+  return images
+    .filter((u): u is string => typeof u === 'string')
+    .map((url) => {
+      const i = url.indexOf(PUBLIC_MARKER);
+      if (i === -1) return null;
+      const path = url.slice(i + PUBLIC_MARKER.length).split('?')[0];
+      try {
+        return decodeURIComponent(path);
+      } catch {
+        return path;
+      }
+    })
+    .filter((p): p is string => p !== null && !p.includes('..'));
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -22,35 +48,39 @@ export async function PATCH(
   }
 
   try {
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    }
+
+    // Audit F-49: Zod-validated whitelist (the edit modal + toggle buttons
+    // send exactly these keys; anything else is ignored).
+    const parsed = UpdateProductSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', issues: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+    const updates = parsed.data;
     const serviceClient = getServiceClient();
 
     const allowedUpdates: Record<string, unknown> = {};
-    if (typeof body.is_active === 'boolean') allowedUpdates.is_active = body.is_active;
-    if (typeof body.stock === 'number') allowedUpdates.stock = body.stock;
-    if (typeof body.price_pkr === 'number') {
-      if (!Number.isInteger(body.price_pkr) || body.price_pkr <= 0) {
-        return NextResponse.json(
-          { error: 'Price must be a positive whole number of PKR.' },
-          { status: 400 }
-        );
-      }
-      allowedUpdates.price_pkr = body.price_pkr;
+    if (updates.is_active !== undefined) allowedUpdates.is_active = updates.is_active;
+    if (updates.is_featured !== undefined) allowedUpdates.is_featured = updates.is_featured;
+    if (updates.stock !== undefined) allowedUpdates.stock = updates.stock;
+    if (updates.price_pkr !== undefined) allowedUpdates.price_pkr = updates.price_pkr;
+    // Audit F-10: subcategory / is_featured are real columns and editable.
+    if (updates.subcategory !== undefined) {
+      allowedUpdates.subcategory = updates.subcategory?.trim() || null;
     }
-    // Audit F-10: subcategory / is_featured are now real columns and editable.
-    if (typeof body.subcategory === 'string') allowedUpdates.subcategory = body.subcategory.trim() || null;
-    if (typeof body.is_featured === 'boolean') allowedUpdates.is_featured = body.is_featured;
     // Audit F-39: typo fixes (name/brand/grade) no longer require delete +
     // recreate, which used to break every existing link to the piece.
-    if (typeof body.name === 'string' && body.name.trim()) {
-      allowedUpdates.name = body.name.trim().slice(0, 200);
-    }
-    if (typeof body.brand === 'string' && body.brand.trim()) {
-      allowedUpdates.brand = body.brand.trim().slice(0, 100);
-    }
-    if (typeof body.condition === 'string') {
-      allowedUpdates.condition = body.condition.trim() || null;
-    }
+    if (updates.name !== undefined) allowedUpdates.name = updates.name;
+    if (updates.brand !== undefined) allowedUpdates.brand = updates.brand;
+    if (updates.condition !== undefined) allowedUpdates.condition = updates.condition;
 
     if (Object.keys(allowedUpdates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
@@ -61,12 +91,6 @@ export async function PATCH(
     // (products_thrift_one_of_one); validate here first for a clean message.
     if (typeof allowedUpdates.stock === 'number') {
       const stock = allowedUpdates.stock as number;
-      if (!Number.isInteger(stock) || stock < 0) {
-        return NextResponse.json(
-          { error: 'Stock must be a non-negative integer' },
-          { status: 400 }
-        );
-      }
 
       const { data: product, error: productError } = await serviceClient
         .from('products')
@@ -75,7 +99,8 @@ export async function PATCH(
         .maybeSingle();
 
       if (productError) {
-        return NextResponse.json({ error: productError.message }, { status: 500 });
+        console.error('[/api/admin/products/[id]] lookup failed:', productError.message);
+        return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
       }
       if (!product) {
         return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -96,12 +121,24 @@ export async function PATCH(
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      // F-41: raw detail to the server log only.
+      console.error('[/api/admin/products/[id]] DB update error:', error.message);
+      return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
     }
+
+    securityLog('admin.product.update', {
+      adminId: auth.user?.id,
+      id,
+      fields: Object.keys(allowedUpdates),
+    });
 
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
-    return NextResponse.json({ error: errorMessage(err, 'Server error') }, { status: 500 });
+    console.error(
+      '[/api/admin/products/[id]] Unexpected error:',
+      err instanceof Error ? err.message : err
+    );
+    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
   }
 }
 
@@ -125,17 +162,66 @@ export async function DELETE(
 
   try {
     const serviceClient = getServiceClient();
-    const { error } = await serviceClient
-      .from('products')
-      .delete()
-      .eq('id', id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // Fetch first so we know which storage objects to remove (audit F-52:
+    // deleting the row used to leave its photos orphaned in the bucket).
+    const { data: product, error: fetchError } = await serviceClient
+      .from('products')
+      .select('id, slug, images')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[/api/admin/products/[id]] lookup failed:', fetchError.message);
+      return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+    }
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, deletedId: id });
+    const { error } = await serviceClient.from('products').delete().eq('id', id);
+
+    if (error) {
+      console.error('[/api/admin/products/[id]] DB delete error:', error.message);
+      return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+    }
+
+    // Storage cleanup — best effort, reported in the response. A leftover
+    // object is recoverable; failing the request after the row is gone is not.
+    const paths = storageObjectPaths(product.images);
+    let removed = 0;
+    let failed = 0;
+    if (paths.length > 0) {
+      const { data: removedData, error: removeError } = await serviceClient.storage
+        .from('products')
+        .remove(paths);
+      if (removeError) {
+        console.error('[/api/admin/products/[id]] storage cleanup failed:', removeError.message);
+        failed = paths.length;
+      } else {
+        removed = removedData?.length ?? paths.length;
+        failed = paths.length - removed;
+      }
+    }
+
+    securityLog('admin.product.delete', {
+      adminId: auth.user?.id,
+      id,
+      slug: product.slug,
+      objectsRemoved: removed,
+      objectsFailed: failed,
+    });
+
+    return NextResponse.json({
+      success: true,
+      deletedId: id,
+      storage: { removed, failed },
+    });
   } catch (err) {
-    return NextResponse.json({ error: errorMessage(err, 'Server error') }, { status: 500 });
+    console.error(
+      '[/api/admin/products/[id]] Unexpected error:',
+      err instanceof Error ? err.message : err
+    );
+    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
 }

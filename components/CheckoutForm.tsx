@@ -92,6 +92,9 @@ export function CheckoutForm() {
     }
   });
   const [orderPlaced, setOrderPlaced] = useState(false);
+  // Audit F-50 / SEC-19: set when the API reports an idempotent replay —
+  // the order existed already and the API (deliberately) returned no data.
+  const [replayed, setReplayed] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     customerName: '',
@@ -233,6 +236,21 @@ export function CheckoutForm() {
         return;
       }
 
+      // Audit F-50 / SEC-19: an idempotent replay means the original
+      // attempt already created this order (its response was lost). The
+      // API returns no order data on replay, so show the "already
+      // submitted" notice rather than a receipt we cannot back up.
+      if (data.idempotent === true) {
+        setReplayed(true);
+        try {
+          sessionStorage.removeItem(IDEMPOTENCY_STORAGE_KEY);
+        } catch {
+          // non-fatal
+        }
+        clearCart();
+        return;
+      }
+
       const orderNumber: string = data.order_number;
       setOrderPlaced(true);
 
@@ -286,6 +304,43 @@ export function CheckoutForm() {
   }
 
   if (items.length === 0) {
+    if (replayed) {
+      return (
+        <div className="max-w-xl mx-auto px-4 sm:px-6 py-16 text-center">
+          <h1 className="text-2xl font-extrabold text-black tracking-tight">
+            Order already submitted
+          </h1>
+          <p className="mt-3 text-sm text-body leading-relaxed">
+            It looks like this order was already placed a moment ago — please don&apos;t
+            re-order. If you don&apos;t hear from us on WhatsApp within a few hours,
+            message us at{' '}
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-black underline"
+            >
+              0324-8188616
+            </a>{' '}
+            with your name and the items you ordered.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/shop"
+              className="inline-flex items-center justify-center px-6 py-3 bg-black text-white text-sm font-semibold rounded-full hover:bg-black transition-colors"
+            >
+              Continue shopping
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-6 py-3 border border-neutral-300 text-body text-sm font-semibold rounded-full hover:border-black hover:text-black transition-colors"
+            >
+              Back to home
+            </Link>
+          </div>
+        </div>
+      );
+    }
     if (orderPlaced) {
       return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">

@@ -18,6 +18,8 @@ import { z } from 'zod';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { sendOrderConfirmationEmail, isEmailConfigured } from '@/lib/email';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+import { mapPlaceOrderError } from '@/lib/order-errors';
+import { securityLog } from '@/lib/security-log';
 import {
   normalizePakistaniPhone,
   isValidPakistaniPhone,
@@ -119,8 +121,8 @@ export async function POST(req: NextRequest) {
   // 3. Call place_order RPC via service-role client. Client construction and
   //    transport failures degrade to the same "unavailable" state (F-14).
   let result: {
-    order_number: string;
-    total_pkr: number;
+    order_number?: string;
+    total_pkr?: number;
     idempotent?: boolean;
   } | null = null;
 
@@ -147,23 +149,20 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      // The RPC raises meaningful exceptions (stock, unavailable product,
-      // invalid size). Surface the message — it contains no PII.
-      const msg: string = error.message ?? 'Failed to place order';
-      const isClientFixable =
-        msg.includes('sold out') ||
-        msg.includes('no longer available') ||
-        msg.includes('Product not found') ||
-        msg.includes('Only ') ||
-        msg.includes('valid size') ||
-        msg.includes('Invalid quantity');
-
-      console.error('[/api/orders] RPC error code:', error.code);
-
-      return NextResponse.json(
-        { error: msg },
-        { status: isClientFixable ? 409 : 500 }
-      );
+      // Audit F-41: map by SQLSTATE (TH0xx raised by place_order v4) —
+      // never substring-match on raw Postgres text. Unrecognised errors
+      // become a generic 500; the detail is logged server-side only.
+      const mapped = mapPlaceOrderError(error);
+      if (mapped.status >= 500) {
+        console.error(
+          '[/api/orders] RPC error:',
+          error.code ?? '(no code)',
+          error.message ?? '(no message)'
+        );
+      } else {
+        console.warn('[/api/orders] RPC rejected order:', error.code ?? '(no code)');
+      }
+      return NextResponse.json(mapped.body, { status: mapped.status });
     }
 
     result = rpcResult;
@@ -176,34 +175,49 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(UNAVAILABLE_BODY, { status: 503 });
   }
 
+  // 3a. Idempotent replay (audit F-50 / SEC-19): the RPC returns ONLY
+  //     { idempotent: true } on replay — no order number or total (that
+  //     pair was a replay oracle). The storefront shows an
+  //     "already submitted" notice and points to WhatsApp.
+  if (result.idempotent === true) {
+    securityLog('order.replay', { ip: clientIp(req) });
+    return NextResponse.json(
+      { idempotent: true, email_enabled: isEmailConfigured() },
+      { status: 201 }
+    );
+  }
+
+  // 3b. Defence in depth: a fresh order must carry a number + total.
+  if (!result.order_number || typeof result.total_pkr !== 'number') {
+    console.error('[/api/orders] RPC returned an unexpected shape');
+    return NextResponse.json(UNAVAILABLE_BODY, { status: 503 });
+  }
+
+  const orderNumber = result.order_number;
+  const orderTotal = result.total_pkr;
+
   // 4. Confirmation email — ONLY for freshly created orders (never on an
   //    idempotent replay, audit F-09) and NEVER awaited (audit F-19): a
   //    stalled provider must not delay the response carrying the order
   //    number, or the customer retries and creates a second order.
-  if (!result.idempotent) {
-    void sendOrderConfirmationEmail({
-      orderNumber: result.order_number,
-      customerName: data.customer_name,
-      customerEmail: data.customer_email,
-      totalPkr: result.total_pkr,
-      deliveryAddress: `${data.address_line}, ${data.city}, ${data.province}`,
-      items: data.items,
-    }).catch((e) =>
-      console.error('[/api/orders] Confirmation email failed:', e instanceof Error ? e.message : e)
-    );
-  }
+  void sendOrderConfirmationEmail({
+    orderNumber,
+    customerName: data.customer_name,
+    customerEmail: data.customer_email,
+    totalPkr: orderTotal,
+    deliveryAddress: `${data.address_line}, ${data.city}, ${data.province}`,
+    items: data.items,
+  }).catch((e) =>
+    console.error('[/api/orders] Confirmation email failed:', e instanceof Error ? e.message : e)
+  );
 
   // Log only order_number (no PII)
-  console.log(
-    '[/api/orders] Order placed:',
-    result.order_number,
-    result.idempotent ? '(idempotent replay)' : ''
-  );
+  console.log('[/api/orders] Order placed:', orderNumber);
 
   // email_enabled lets the confirmation page phrase email copy honestly
   // (audit F-26) instead of promising a receipt that was never sent.
   return NextResponse.json(
-    { ...result, email_enabled: isEmailConfigured() },
+    { order_number: orderNumber, total_pkr: orderTotal, idempotent: false, email_enabled: isEmailConfigured() },
     { status: 201 }
   );
 }

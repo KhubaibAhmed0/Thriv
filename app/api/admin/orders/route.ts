@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
-import { errorMessage } from '@/lib/errors';
 
 interface AdminOrderRow {
   id: string;
@@ -36,10 +35,21 @@ export async function GET(req: NextRequest) {
 
     const supabase = getServiceClient();
 
+    // Audit F-83: bounded pagination. Defaults keep the current UI intact
+    // (order volume here is tiny); the cap stops unbounded reads as the
+    // store grows.
+    const url = new URL(req.url);
+    const limit = Math.min(
+      Math.max(parseInt(url.searchParams.get('limit') ?? '200', 10) || 200, 1),
+      500
+    );
+    const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10) || 0, 0);
+
     // Fetch orders with item count snapshot
-    const { data: orders, error } = await supabase
+    const { data: orders, error, count } = await supabase
       .from('orders')
-      .select(`
+      .select(
+        `
         id,
         order_number,
         customer_name,
@@ -53,12 +63,16 @@ export async function GET(req: NextRequest) {
         created_at,
         delivered_at,
         order_items ( id )
-      `)
-      .order('created_at', { ascending: false });
+      `,
+        { count: 'exact' }
+      )
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
+      // F-41: log the raw detail, never echo it to the client.
       console.error('[/api/admin/orders] DB error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
     }
 
     const formattedOrders = (orders || []).map((o: AdminOrderRow) => ({
@@ -77,14 +91,20 @@ export async function GET(req: NextRequest) {
       item_count: Array.isArray(o.order_items) ? o.order_items.length : 0,
     }));
 
+    const total = count ?? formattedOrders.length;
+
     return NextResponse.json({
       configured: true,
       orders: formattedOrders,
+      total,
+      limit,
+      offset,
+      has_more: total > offset + formattedOrders.length,
     });
   } catch (err) {
     console.error('[/api/admin/orders] Unexpected error:', err);
     return NextResponse.json(
-      { error: errorMessage(err, 'Failed to fetch orders') },
+      { error: 'Failed to fetch orders' },
       { status: 500 }
     );
   }

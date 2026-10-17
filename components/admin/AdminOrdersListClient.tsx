@@ -260,7 +260,10 @@ export default function AdminOrdersListClient() {
 
       {/* Realtime Toast Notification */}
       {realtimeToast && (
-        <div className="fixed bottom-4 right-4 z-50 max-w-sm w-[calc(100%-2rem)] bg-admin-field border border-amber-500/40 rounded-[14px] p-4 shadow-2xl flex items-start gap-3">
+        <div
+          role="status"
+          className="fixed bottom-4 right-4 z-50 max-w-sm w-[calc(100%-2rem)] bg-admin-field border border-amber-500/40 rounded-[14px] p-4 shadow-2xl flex items-start gap-3"
+        >
           <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
             <Bell className="w-4 h-4" />
           </div>
