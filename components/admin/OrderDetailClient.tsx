@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { STATUS_CONFIG, paymentLabel } from '@/lib/orderLabels';
+import { AdminNavHeader } from '@/components/admin/AdminNavHeader';
+import { AdminToast, ConfirmDialog, type AdminToastState } from '@/components/admin/AdminFeedback';
 import {
   ArrowLeft,
   Phone,
@@ -18,6 +20,7 @@ import {
   User,
   MapPin,
   Package,
+  Truck,
 } from 'lucide-react';
 
 interface OrderItemSnapshot {
@@ -60,9 +63,27 @@ interface OrderDetail {
   total_pkr: number;
   created_at: string;
   delivered_at?: string | null;
+  courier?: string | null;
+  tracking_number?: string | null;
   items?: OrderItemSnapshot[];
   events?: OrderEvent[];
 }
+
+// Fulfillment pipeline (audit F-78): the server state machine is forward-only,
+// so the UI shows exactly one primary next step plus sub-actions.
+const ORDER_STAGES = ['new', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+const FULFILMENT_STEPS = [
+  { key: 'confirmed', label: 'Confirmed', stage: 1 },
+  { key: 'shipped', label: 'Shipped', stage: 2 },
+  { key: 'delivered', label: 'Delivered', stage: 3 },
+];
+const NEXT_ACTION: Partial<
+  Record<OrderDetail['status'], { status: 'confirmed' | 'shipped' | 'delivered'; label: string }>
+> = {
+  new: { status: 'confirmed', label: 'Confirm Order' },
+  confirmed: { status: 'shipped', label: 'Mark Shipped' },
+  shipped: { status: 'delivered', label: 'Mark Delivered' },
+};
 
 // Status badge styling and payment labels now live in lib/orderLabels.ts
 // (audit F-60).
@@ -74,9 +95,15 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
   const [error, setError] = useState<string | null>(null);
 
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const [confirmingDelivered, setConfirmingDelivered] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [toast, setToast] = useState<AdminToastState | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [deliverOpen, setDeliverOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [courier, setCourier] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [savingDispatch, setSavingDispatch] = useState(false);
 
   // Initial `loading` state covers the first fetch; retry callers set the
   // spinner themselves so the effect body performs no synchronous setState
@@ -94,6 +121,8 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
       } else {
         setError(null);
         setOrder(data.order);
+        setCourier(data.order.courier ?? '');
+        setTrackingNumber(data.order.tracking_number ?? '');
       }
     } catch {
       setError('Network error loading order.');
@@ -146,15 +175,17 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || 'Failed to update status');
+        setToast({ kind: 'error', message: data.error || 'Failed to update status' });
       } else {
         await fetchOrder();
-        setConfirmingDelivered(false);
+        setToast({ kind: 'success', message: 'Order status updated' });
       }
     } catch {
-      alert('Network error updating status');
+      setToast({ kind: 'error', message: 'Network error updating status' });
     } finally {
       setUpdatingStatus(false);
+      setDeliverOpen(false);
+      setCancelOpen(false);
     }
   };
 
@@ -172,22 +203,53 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || 'Failed to update payment status');
+        setToast({ kind: 'error', message: data.error || 'Failed to update payment status' });
       } else {
         setOrder((prev) => (prev ? { ...prev, payment_status: nextPaymentStatus } : null));
+        setToast({
+          kind: 'success',
+          message: `Payment marked ${nextPaymentStatus}`,
+        });
       }
     } catch {
-      alert('Network error updating payment status');
+      setToast({ kind: 'error', message: 'Network error updating payment status' });
     } finally {
       setUpdatingPayment(false);
     }
   };
 
+  // Dispatch details save (audit F-79)
+  const handleSaveDispatch = async () => {
+    if (!order) return;
+    setSavingDispatch(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.order_number}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courier: courier.trim(),
+          tracking_number: trackingNumber.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast({ kind: 'error', message: data.error || 'Failed to save dispatch details' });
+      } else {
+        await fetchOrder();
+        setToast({ kind: 'success', message: 'Dispatch details saved' });
+      }
+    } catch {
+      setToast({ kind: 'error', message: 'Network error saving dispatch details' });
+    } finally {
+      setSavingDispatch(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div data-admin className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-6 h-6 text-neutral-500 animate-spin mx-auto mb-2" />
+          <RefreshCw className="w-6 h-6 text-neutral-400 animate-spin mx-auto mb-2" />
           <p className="text-xs text-neutral-400">Loading order {orderNumber}...</p>
         </div>
       </div>
@@ -196,7 +258,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-black text-white p-4 sm:p-6">
+      <div data-admin className="min-h-screen bg-black text-white p-4 sm:p-6">
         <div className="max-w-xl mx-auto space-y-4">
           <Link
             href="/admin"
@@ -213,58 +275,55 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
   }
 
   const statusCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.new;
+  const stageIndex = ORDER_STAGES.indexOf(order.status);
+  const nextAction = NEXT_ACTION[order.status];
   const isBankOrWallet = ['bank-transfer', 'bank_transfer', 'easypaisa', 'jazzcash'].includes(
     order.payment_method
   );
 
   return (
-    <div className="min-h-screen bg-black text-white pb-16">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-30 bg-[#161616] border-b border-[#242424] px-4 py-3 sm:px-6">
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-3">
-          <Link
-            href="/admin"
-            className="inline-flex items-center gap-1 text-xs text-neutral-400 hover:text-white font-medium transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Orders</span>
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
-            >
-              {statusCfg.label}
-            </span>
-          </div>
-        </div>
-      </header>
+    <div data-admin className="min-h-screen bg-black text-white pb-16">
+      {/* Shared admin nav — tabs, refresh, sign out (audit F-38) */}
+      <AdminNavHeader
+        onRefresh={() => {
+          setLoading(true);
+          fetchOrder();
+        }}
+        loading={loading}
+      />
 
       {/* Main Container — Mobile-First (375px) */}
       <main className="max-w-xl mx-auto px-4 py-4 sm:px-6 space-y-4">
-        {/* Order Title & Time */}
-        <div className="bg-[#161616] border border-[#242424] rounded-[16px] p-4 sm:p-5">
+        {/* Order Title & Status */}
+        <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-mono">
+              <p className="text-[11px] text-neutral-400 uppercase tracking-wider font-mono">
                 Order Number
               </p>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white font-mono mt-0.5">
                 {order.order_number}
               </h1>
             </div>
-            <span className="text-xs text-neutral-500 pt-1">
-              {new Date(order.created_at).toLocaleString('en-GB', {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
-            </span>
+            <div className="flex flex-col items-end gap-1.5 pt-0.5">
+              <span
+                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}
+              >
+                {statusCfg.label}
+              </span>
+              <span className="text-[11px] text-neutral-400">
+                {new Date(order.created_at).toLocaleString('en-GB', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* ── Customer Block ── */}
-        <div className="bg-[#161616] border border-[#242424] rounded-[16px] p-4 sm:p-5 space-y-3">
-          <div className="flex items-center gap-2 text-neutral-400 border-b border-[#222222] pb-2.5">
+        <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5 space-y-3">
+          <div className="flex items-center gap-2 text-neutral-400 border-b border-admin-raised pb-2.5">
             <User className="w-4 h-4 text-neutral-400" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
               Customer Information
@@ -280,7 +339,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
           <div className="grid grid-cols-2 gap-2 pt-1">
             <a
               href={`tel:${order.customer_phone}`}
-              className="flex items-center justify-center gap-2 bg-[#222222] hover:bg-[#282828] active:bg-[#303030] text-neutral-200 text-xs font-semibold py-2.5 px-3 rounded-[10px] border border-[#2e2e2e] transition-colors"
+              className="flex items-center justify-center gap-2 bg-admin-field hover:bg-admin-raised active:bg-admin-line-strong min-h-11 text-neutral-200 text-xs font-semibold py-2.5 px-3 rounded-[10px] border border-admin-line-strong transition-colors"
             >
               <Phone className="w-3.5 h-3.5 text-neutral-400" />
               <span>Call ({order.customer_phone})</span>
@@ -290,7 +349,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
               href={getWhatsAppUrl()}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-emerald-950/40 hover:bg-emerald-900/50 active:bg-emerald-900/60 text-emerald-400 text-xs font-semibold py-2.5 px-3 rounded-[10px] border border-emerald-800/40 transition-colors"
+              className="flex items-center justify-center gap-2 bg-emerald-950/40 hover:bg-emerald-900/50 active:bg-emerald-900/60 min-h-11 text-emerald-400 text-xs font-semibold py-2.5 px-3 rounded-[10px] border border-emerald-800/40 transition-colors"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span>WhatsApp</span>
@@ -298,7 +357,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
           </div>
 
           {/* Delivery Address & Copy-to-Clipboard */}
-          <div className="pt-2 border-t border-[#222222]">
+          <div className="pt-2 border-t border-admin-raised">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-0.5 text-xs">
                 <div className="flex items-center gap-1.5 text-neutral-400 mb-1">
@@ -313,7 +372,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
 
               <button
                 onClick={handleCopyAddress}
-                className="flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white bg-[#222222] hover:bg-[#282828] border border-[#2e2e2e] px-2.5 py-1.5 rounded-[8px] transition-colors shrink-0 cursor-pointer"
+                className="flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white bg-admin-field hover:bg-admin-raised border border-admin-line-strong px-3 py-2 min-h-9 rounded-[8px] transition-colors shrink-0 cursor-pointer"
               >
                 {copiedAddress ? (
                   <>
@@ -332,7 +391,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
         </div>
 
         {/* ── Order Instructions (Notes) ── */}
-        <div className="bg-[#161616] border border-[#242424] rounded-[16px] p-4 sm:p-5 space-y-2">
+        <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5 space-y-2">
           <div className="flex items-center gap-2 text-neutral-400">
             <FileText className="w-4 h-4 text-neutral-400" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
@@ -341,28 +400,28 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
           </div>
 
           {order.notes && order.notes.trim() ? (
-            <div className="p-3 bg-[#1d1d1d] border border-[#2a2a2a] rounded-[10px] text-xs text-neutral-200 leading-relaxed">
+            <div className="p-3 bg-admin-field border border-admin-line rounded-[10px] text-xs text-neutral-200 leading-relaxed">
               {order.notes}
             </div>
           ) : (
-            <p className="text-xs text-neutral-500 italic">No instructions</p>
+            <p className="text-xs text-neutral-400 italic">No instructions</p>
           )}
         </div>
 
         {/* ── Items List (Snapshot Only) ── */}
-        <div className="bg-[#161616] border border-[#242424] rounded-[16px] p-4 sm:p-5 space-y-3">
-          <div className="flex items-center gap-2 text-neutral-400 border-b border-[#222222] pb-2.5">
+        <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5 space-y-3">
+          <div className="flex items-center gap-2 text-neutral-400 border-b border-admin-raised pb-2.5">
             <Package className="w-4 h-4 text-neutral-400" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
               Order Items ({order.items?.length || 0})
             </h2>
           </div>
 
-          <div className="divide-y divide-[#222222]">
+          <div className="divide-y divide-admin-raised">
             {(order.items || []).map((item) => (
               <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-start gap-3">
                 {/* Thumbnail */}
-                <div className="w-12 h-14 bg-[#202020] rounded-[8px] overflow-hidden shrink-0 border border-[#2e2e2e] relative flex items-center justify-center">
+                <div className="w-12 h-14 bg-admin-field rounded-[8px] overflow-hidden shrink-0 border border-admin-line-strong relative flex items-center justify-center">
                   {item.image_path ? (
                     <Image
                       src={item.image_path}
@@ -384,7 +443,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
                     {item.brand} · {item.size ? `Size ${item.size}` : 'One Size'}
                     {item.condition ? ` · ${item.condition}` : ''}
                   </p>
-                  <p className="text-[11px] text-neutral-500 mt-1">
+                  <p className="text-[11px] text-neutral-400 mt-1">
                     Rs {item.unit_price_pkr.toLocaleString()} × {item.quantity}
                   </p>
                 </div>
@@ -398,7 +457,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
           </div>
 
           {/* Totals Breakdown */}
-          <div className="pt-3 border-t border-[#222222] space-y-1.5 text-xs text-neutral-400">
+          <div className="pt-3 border-t border-admin-raised space-y-1.5 text-xs text-neutral-400">
             <div className="flex justify-between">
               <span>Subtotal</span>
               <span className="text-neutral-200">Rs {order.subtotal_pkr.toLocaleString()}</span>
@@ -407,7 +466,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
               <span>Delivery (Nationwide)</span>
               <span className="text-neutral-200">Rs {order.delivery_fee_pkr.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between text-sm font-extrabold text-white pt-2 border-t border-[#222222]">
+            <div className="flex justify-between text-sm font-extrabold text-white pt-2 border-t border-admin-raised">
               <span>Total</span>
               <span>Rs {order.total_pkr.toLocaleString()}</span>
             </div>
@@ -415,8 +474,8 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
         </div>
 
         {/* ── Payment Block ── */}
-        <div className="bg-[#161616] border border-[#242424] rounded-[16px] p-4 sm:p-5 space-y-3">
-          <div className="flex items-center gap-2 text-neutral-400 border-b border-[#222222] pb-2.5">
+        <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5 space-y-3">
+          <div className="flex items-center gap-2 text-neutral-400 border-b border-admin-raised pb-2.5">
             <CreditCard className="w-4 h-4 text-neutral-400" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
               Payment Details
@@ -451,108 +510,162 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
 
           {/* Payment screenshot reminder */}
           {isBankOrWallet && (
-            <div className="p-3 bg-[#1d1d1d] border border-[#2a2a2a] rounded-[10px] text-xs text-neutral-300 leading-relaxed">
+            <div className="p-3 bg-admin-field border border-admin-line rounded-[10px] text-xs text-neutral-300 leading-relaxed">
               Confirm payment screenshot on WhatsApp before dispatching this parcel.
             </div>
           )}
         </div>
 
-        {/* ── Primary & Secondary Status Actions (Thumb-Reachable) ── */}
-        <div className="bg-[#161616] border border-[#242424] rounded-[16px] p-4 sm:p-5 space-y-3">
+        {/* ── Dispatch Details (audit F-79) ── */}
+        {order.status !== 'new' && order.status !== 'cancelled' && (
+          <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5 space-y-3">
+            <div className="flex items-center gap-2 text-neutral-400 border-b border-admin-raised pb-2.5">
+              <Truck className="w-4 h-4 text-neutral-400" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
+                Dispatch Details
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="dispatch-courier" className="block text-[11px] font-semibold text-neutral-400 mb-1">
+                  Courier
+                </label>
+                <input
+                  id="dispatch-courier"
+                  type="text"
+                  value={courier}
+                  onChange={(e) => setCourier(e.target.value)}
+                  placeholder="e.g. TCS / Leopards"
+                  className="w-full bg-admin-field border border-admin-line-strong rounded-[10px] px-3 py-2.5 text-xs text-white placeholder:text-neutral-400 outline-none focus:border-neutral-400"
+                />
+              </div>
+              <div>
+                <label htmlFor="dispatch-tracking" className="block text-[11px] font-semibold text-neutral-400 mb-1">
+                  Tracking Number
+                </label>
+                <input
+                  id="dispatch-tracking"
+                  type="text"
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  placeholder="e.g. TCS-123456789"
+                  className="w-full bg-admin-field border border-admin-line-strong rounded-[10px] px-3 py-2.5 text-xs text-white placeholder:text-neutral-400 outline-none focus:border-neutral-400 font-mono"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveDispatch}
+              disabled={savingDispatch}
+              className="w-full sm:w-auto min-h-11 px-5 bg-white text-black hover:bg-neutral-200 font-bold text-xs rounded-full transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingDispatch ? 'Saving…' : 'Save tracking'}
+            </button>
+
+            <p className="text-[11px] text-neutral-400">
+              Customers see these details on their order confirmation page once shipped.
+            </p>
+          </div>
+        )}
+
+        {/* ── Fulfillment Actions — one clear next step (audit F-78) ── */}
+        <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5 space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-            Fulfillment Actions
+            Fulfillment
           </h2>
 
-          {/* PRIMARY ACTION: Large Full-Width "Mark Delivered" Button */}
-          {order.status !== 'delivered' && order.status !== 'cancelled' && (
-            <div>
-              {!confirmingDelivered ? (
-                <button
-                  onClick={() => setConfirmingDelivered(true)}
-                  disabled={updatingStatus}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-sm py-4 rounded-[14px] shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span>Mark Delivered</span>
-                </button>
-              ) : (
-                <div className="p-3.5 bg-emerald-950/60 border border-emerald-700/60 rounded-[14px] space-y-2.5">
-                  <p className="text-xs font-bold text-emerald-300 text-center">
-                    Confirm parcel delivered to customer?
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleStatusChange('delivered')}
-                      disabled={updatingStatus}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-[10px] cursor-pointer"
-                    >
-                      {updatingStatus ? 'Updating...' : 'Yes, Confirm'}
-                    </button>
-                    <button
-                      onClick={() => setConfirmingDelivered(false)}
-                      disabled={updatingStatus}
-                      className="bg-[#242424] hover:bg-[#2e2e2e] text-neutral-300 text-xs font-bold py-2.5 rounded-[10px] cursor-pointer"
-                    >
-                      Cancel
-                    </button>
+          {/* Progress stepper */}
+          {order.status === 'cancelled' ? (
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-400 bg-rose-950/40 border border-rose-800/40 rounded-full px-3 py-2 text-center">
+              Order cancelled — stock has been restored.
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wider">
+              {FULFILMENT_STEPS.map((step) => {
+                const reached = stageIndex >= step.stage;
+                const current = stageIndex === step.stage;
+                return (
+                  <div
+                    key={step.key}
+                    aria-current={current ? 'step' : undefined}
+                    className={`py-2 rounded-full border ${
+                      reached
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : 'bg-admin-field border-admin-raised text-neutral-400'
+                    }`}
+                  >
+                    {step.label}
                   </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* PRIMARY ACTION: the single next step in the pipeline */}
+          {nextAction && (
+            <button
+              onClick={() => {
+                if (nextAction.status === 'delivered') {
+                  setDeliverOpen(true);
+                } else {
+                  handleStatusChange(nextAction.status);
+                }
+              }}
+              disabled={updatingStatus}
+              className="w-full min-h-12 bg-white hover:bg-neutral-200 active:bg-neutral-300 text-black font-extrabold text-sm py-3.5 rounded-[14px] shadow-lg transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              <span>{updatingStatus ? 'Updating…' : nextAction.label}</span>
+            </button>
+          )}
+
+          {order.status === 'delivered' && (
+            <p className="text-[11px] text-neutral-400">
+              Order completed — the parcel has reached the customer.
+            </p>
+          )}
+
+          {/* Secondary actions behind a disclosure (audit F-78) */}
+          {nextAction && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setMoreOpen((open) => !open)}
+                aria-expanded={moreOpen}
+                className="text-[11px] font-semibold text-neutral-400 hover:text-white underline underline-offset-2 cursor-pointer"
+              >
+                {moreOpen ? 'Hide extra actions' : 'More actions'}
+              </button>
+
+              {moreOpen && (
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  {order.status === 'new' && (
+                    <button
+                      onClick={() => handleStatusChange('shipped')}
+                      disabled={updatingStatus}
+                      className="min-h-11 bg-admin-field hover:bg-admin-raised text-sky-300 text-xs font-semibold rounded-[10px] border border-admin-line-strong transition-colors cursor-pointer"
+                    >
+                      Mark Shipped (skip)
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setCancelOpen(true)}
+                    disabled={updatingStatus}
+                    className={`min-h-11 bg-admin-field hover:bg-admin-raised text-rose-400 text-xs font-semibold rounded-[10px] border border-admin-line-strong transition-colors cursor-pointer ${
+                      order.status === 'new' ? '' : 'col-span-2'
+                    }`}
+                  >
+                    Cancel Order
+                  </button>
                 </div>
               )}
             </div>
           )}
-
-          {/* Secondary Actions (Smaller, Visually Subordinate) */}
-          {/* Mirrors the server-side state machine (update_order_status):
-              forward moves only, cancel possible until delivered. */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            {order.status === 'new' && (
-              <button
-                onClick={() => handleStatusChange('confirmed')}
-                disabled={updatingStatus}
-                className="bg-[#222222] hover:bg-[#282828] text-neutral-200 text-xs font-semibold py-2 px-2 rounded-[10px] border border-[#2e2e2e] transition-colors cursor-pointer"
-              >
-                Confirm
-              </button>
-            )}
-
-            {(order.status === 'new' || order.status === 'confirmed') && (
-              <button
-                onClick={() => handleStatusChange('shipped')}
-                disabled={updatingStatus}
-                className="bg-[#222222] hover:bg-[#282828] text-sky-300 text-xs font-semibold py-2 px-2 rounded-[10px] border border-[#2e2e2e] transition-colors cursor-pointer"
-              >
-                Mark Shipped
-              </button>
-            )}
-
-            {(order.status === 'new' ||
-              order.status === 'confirmed' ||
-              order.status === 'shipped') && (
-              <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to cancel this order?')) {
-                    handleStatusChange('cancelled');
-                  }
-                }}
-                disabled={updatingStatus}
-                className="bg-[#222222] hover:bg-[#282828] text-rose-400 text-xs font-semibold py-2 px-2 rounded-[10px] border border-[#2e2e2e] transition-colors cursor-pointer"
-              >
-                Cancel Order
-              </button>
-            )}
-          </div>
-
-          {(order.status === 'delivered' || order.status === 'cancelled') && (
-            <p className="text-[11px] text-neutral-500 pt-1">
-              {order.status === 'delivered'
-                ? 'Order completed — no further fulfillment actions.'
-                : 'Order cancelled — stock has been restored; no further actions.'}
-            </p>
-          )}
         </div>
 
         {/* ── Status History (from order_events) ── */}
-        <div className="bg-[#161616] border border-[#242424] rounded-[16px] p-4 sm:p-5 space-y-3">
+        <div className="bg-admin-bg border border-admin-raised rounded-[16px] p-4 sm:p-5 space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-400">
             Status History
           </h2>
@@ -577,7 +690,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
                     </p>
                     {event.note && <p className="text-[11px] text-neutral-400 mt-0.5">{event.note}</p>}
                   </div>
-                  <span className="text-[10px] text-neutral-500 shrink-0">
+                  <span className="text-[10px] text-neutral-400 shrink-0">
                     {new Date(event.created_at).toLocaleString('en-GB', {
                       dateStyle: 'short',
                       timeStyle: 'short',
@@ -587,10 +700,33 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
               ))}
             </div>
           ) : (
-            <p className="text-xs text-neutral-500 italic">No events recorded</p>
+            <p className="text-xs text-neutral-400 italic">No events recorded</p>
           )}
         </div>
       </main>
+
+      <ConfirmDialog
+        open={deliverOpen}
+        title="Mark as delivered?"
+        message="Confirm the parcel has reached the customer. This completes the order and cannot be undone."
+        confirmLabel="Yes, delivered"
+        busy={updatingStatus}
+        onConfirm={() => handleStatusChange('delivered')}
+        onCancel={() => setDeliverOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Cancel this order?"
+        message="Reserved stock will be restored. The customer's order page will show the order as cancelled."
+        confirmLabel="Cancel order"
+        destructive
+        busy={updatingStatus}
+        onConfirm={() => handleStatusChange('cancelled')}
+        onCancel={() => setCancelOpen(false)}
+      />
+
+      <AdminToast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

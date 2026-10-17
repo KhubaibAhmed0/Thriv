@@ -227,7 +227,7 @@ export default function AdminOrdersListClient() {
   }, [orders, activeFilter, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div data-admin className="min-h-screen bg-black text-white">
       {/* Shared Admin Navigation Header with Orders & Inventory Tabs */}
       <AdminNavHeader
         onRefresh={() => {
@@ -239,13 +239,13 @@ export default function AdminOrdersListClient() {
       />
 
       {/* Subheader Title */}
-      <div className="bg-[#161616] border-b border-[#242424] px-4 py-3 sm:px-6">
+      <div className="bg-admin-bg border-b border-admin-raised px-4 py-3 sm:px-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white">
               Customer Orders
             </h1>
-            <span className="text-xs bg-[#242424] text-neutral-400 font-mono px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-admin-raised text-neutral-400 font-mono px-2 py-0.5 rounded-full">
               {filteredOrders.length}
             </span>
             {newOrdersCount > 0 && (
@@ -260,7 +260,7 @@ export default function AdminOrdersListClient() {
 
       {/* Realtime Toast Notification */}
       {realtimeToast && (
-        <div className="fixed bottom-4 right-4 z-50 max-w-sm w-[calc(100%-2rem)] bg-[#1e1e1e] border border-amber-500/40 rounded-[14px] p-4 shadow-2xl flex items-start gap-3">
+        <div className="fixed bottom-4 right-4 z-50 max-w-sm w-[calc(100%-2rem)] bg-admin-field border border-amber-500/40 rounded-[14px] p-4 shadow-2xl flex items-start gap-3">
           <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
             <Bell className="w-4 h-4" />
           </div>
@@ -271,7 +271,8 @@ export default function AdminOrdersListClient() {
               </p>
               <button
                 onClick={() => setRealtimeToast(null)}
-                className="text-neutral-500 hover:text-neutral-300 p-0.5 cursor-pointer"
+                aria-label="Dismiss new order notification"
+                className="text-neutral-400 hover:text-neutral-300 p-2 -mr-1.5 -mt-1 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -297,18 +298,18 @@ export default function AdminOrdersListClient() {
       <main className="max-w-4xl mx-auto px-4 py-4 sm:px-6 space-y-4">
         {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 pointer-events-none" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by order #, customer name, phone, or city..."
-            className="w-full bg-[#181818] border border-[#282828] rounded-[12px] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-neutral-500 outline-none focus:border-neutral-500 transition-colors"
+            className="w-full bg-admin-bg border border-admin-line rounded-[12px] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-neutral-400 outline-none focus:border-neutral-500 transition-colors"
           />
         </div>
 
         {/* Filter Chips (Horizontally scrollable on mobile) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
           {FILTER_CHIPS.map((chip) => {
             const isActive = activeFilter === chip.id;
             return (
@@ -318,7 +319,7 @@ export default function AdminOrdersListClient() {
                 className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-white text-black border-white'
-                    : 'bg-[#1a1a1a] text-neutral-400 border-[#2a2a2a] hover:border-neutral-600 hover:text-neutral-200'
+                    : 'bg-admin-field text-neutral-400 border-admin-line hover:border-neutral-600 hover:text-neutral-200'
                 }`}
               >
                 {chip.label}
@@ -342,10 +343,10 @@ export default function AdminOrdersListClient() {
             <p className="text-xs text-neutral-400">Loading orders...</p>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="text-center py-16 bg-[#161616] border border-[#242424] rounded-[16px] p-6">
+          <div className="text-center py-16 bg-admin-bg border border-admin-raised rounded-[16px] p-6">
             <Package className="w-8 h-8 text-neutral-600 mx-auto mb-2" />
             <p className="text-sm font-semibold text-neutral-300">No orders found</p>
-            <p className="text-xs text-neutral-500 mt-1">
+            <p className="text-xs text-neutral-400 mt-1">
               {searchQuery ? 'Try clearing your search query' : 'No orders matching current filter'}
             </p>
           </div>
@@ -361,7 +362,7 @@ export default function AdminOrdersListClient() {
                   key={order.id}
                   href={`/admin/orders/${order.order_number}`}
                   onClick={() => markOrderOpened(order.order_number)}
-                  className="block bg-[#161616] hover:bg-[#1c1c1c] active:bg-[#202020] border border-[#242424] hover:border-[#333333] rounded-[14px] p-4 transition-colors relative"
+                  className="block bg-admin-bg hover:bg-admin-field active:bg-admin-field border border-admin-raised hover:border-admin-line-strong rounded-[14px] p-4 transition-colors relative"
                 >
                   {/* Unread indicator */}
                   {isUnread && (
@@ -389,7 +390,7 @@ export default function AdminOrdersListClient() {
                       </h2>
                     </div>
 
-                    <span className="text-[11px] text-neutral-500 shrink-0">
+                    <span className="text-[11px] text-neutral-400 shrink-0">
                       {formatRelativeTime(order.created_at)}
                     </span>
                   </div>
@@ -408,7 +409,7 @@ export default function AdminOrdersListClient() {
                   </div>
 
                   {/* Badges Row */}
-                  <div className="mt-3 pt-3 border-t border-[#222222] flex items-center justify-between gap-2">
+                  <div className="mt-3 pt-3 border-t border-admin-raised flex items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       {/* Order Status Badge */}
                       <span
@@ -435,7 +436,7 @@ export default function AdminOrdersListClient() {
                       </span>
                     </div>
 
-                    <ChevronRight className="w-4 h-4 text-neutral-500 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-neutral-400 shrink-0" />
                   </div>
                 </Link>
               );

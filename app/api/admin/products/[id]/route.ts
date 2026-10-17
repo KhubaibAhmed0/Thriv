@@ -28,10 +28,29 @@ export async function PATCH(
     const allowedUpdates: Record<string, unknown> = {};
     if (typeof body.is_active === 'boolean') allowedUpdates.is_active = body.is_active;
     if (typeof body.stock === 'number') allowedUpdates.stock = body.stock;
-    if (typeof body.price_pkr === 'number') allowedUpdates.price_pkr = body.price_pkr;
+    if (typeof body.price_pkr === 'number') {
+      if (!Number.isInteger(body.price_pkr) || body.price_pkr <= 0) {
+        return NextResponse.json(
+          { error: 'Price must be a positive whole number of PKR.' },
+          { status: 400 }
+        );
+      }
+      allowedUpdates.price_pkr = body.price_pkr;
+    }
     // Audit F-10: subcategory / is_featured are now real columns and editable.
     if (typeof body.subcategory === 'string') allowedUpdates.subcategory = body.subcategory.trim() || null;
     if (typeof body.is_featured === 'boolean') allowedUpdates.is_featured = body.is_featured;
+    // Audit F-39: typo fixes (name/brand/grade) no longer require delete +
+    // recreate, which used to break every existing link to the piece.
+    if (typeof body.name === 'string' && body.name.trim()) {
+      allowedUpdates.name = body.name.trim().slice(0, 200);
+    }
+    if (typeof body.brand === 'string' && body.brand.trim()) {
+      allowedUpdates.brand = body.brand.trim().slice(0, 100);
+    }
+    if (typeof body.condition === 'string') {
+      allowedUpdates.condition = body.condition.trim() || null;
+    }
 
     if (Object.keys(allowedUpdates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });

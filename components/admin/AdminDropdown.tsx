@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import React from 'react';
+import { ChevronDown } from 'lucide-react';
 
 export interface AdminDropdownOption {
   value: string;
   label: string;
   sublabel?: string;
+  /** Kept for data compatibility; native <option> rows cannot render dots. */
   dotColor?: string;
 }
 
@@ -17,8 +18,19 @@ interface AdminDropdownProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** id applied to the <select> so an external <label htmlFor> works (F-35). */
+  id?: string;
+  /** Renders the error styling + aria-invalid when true (F-36). */
+  invalid?: boolean;
+  /** id of an error message element to describe this control (F-36). */
+  describedBy?: string;
 }
 
+/**
+ * Admin dropdown — audit F-34/F-67: the custom listbox was replaced with a
+ * native styled <select>. Keyboard support, screen-reader semantics and
+ * mobile pickers come from the platform instead of hand-rolled ARIA.
+ */
 export function AdminDropdown({
   options,
   value,
@@ -26,138 +38,40 @@ export function AdminDropdown({
   placeholder = 'Select an option',
   className = '',
   disabled = false,
+  id,
+  invalid = false,
+  describedBy,
 }: AdminDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
-
-  // Close on Escape key
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    }
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
-
-  const selectedOption = options.find((opt) => opt.value === value);
+  const hasValue = options.some((option) => option.value === value);
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
-      {/* Trigger Button */}
-      <button
-        type="button"
+    <div className={`relative w-full ${className}`}>
+      <select
+        id={id}
+        value={hasValue ? value : ''}
+        onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        className={[
-          'w-full bg-[#202020] border rounded-[12px] px-3.5 py-2.5 text-sm text-white flex items-center justify-between transition-colors cursor-pointer select-none outline-none',
-          isOpen ? 'border-neutral-400' : 'border-[#303030] hover:border-neutral-400',
-          disabled ? 'opacity-50 cursor-not-allowed' : '',
-        ].join(' ')}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid && describedBy ? describedBy : undefined}
+        className={`w-full appearance-none bg-admin-field border rounded-[12px] pl-3.5 pr-10 py-2.5 text-sm text-white transition-colors cursor-pointer outline-none focus:border-neutral-400 disabled:opacity-50 disabled:cursor-not-allowed ${
+          invalid ? 'border-rose-500/60' : 'border-admin-line-strong'
+        }`}
       >
-        <div className="flex items-center gap-2.5 min-w-0 overflow-hidden text-left">
-          {selectedOption?.dotColor && (
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{ backgroundColor: selectedOption.dotColor }}
-              aria-hidden="true"
-            />
-          )}
-
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : <span className="text-neutral-500">{placeholder}</span>}
-          </span>
-
-          {selectedOption?.sublabel && (
-            <span className="text-xs text-neutral-400 font-normal truncate hidden sm:inline">
-              ({selectedOption.sublabel})
-            </span>
-          )}
-        </div>
-
-        <ChevronDown
-          className={[
-            'w-4 h-4 text-neutral-400 transition-transform duration-200 shrink-0 ml-2',
-            isOpen ? 'rotate-180 text-white' : '',
-          ].join(' ')}
-        />
-      </button>
-
-      {/* Floating Menu Popover */}
-      {isOpen && (
-        <div
-          role="listbox"
-          className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-[#1c1c1c] rounded-[14px] border border-[#303030] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-100 max-h-64 overflow-y-auto"
-        >
-          <div className="space-y-0.5">
-            {options.map((option) => {
-              const isSelected = option.value === value;
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  onClick={() => {
-                    onChange(option.value);
-                    setIsOpen(false);
-                  }}
-                  className={[
-                    'w-full text-left px-3 py-2.5 rounded-[10px] text-xs sm:text-sm font-medium transition-all flex items-center justify-between gap-3 cursor-pointer',
-                    isSelected
-                      ? 'bg-[#282828] text-white font-semibold'
-                      : 'text-neutral-300 hover:bg-[#232323] hover:text-white',
-                  ].join(' ')}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {option.dotColor && (
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: option.dotColor }}
-                        aria-hidden="true"
-                      />
-                    )}
-                    <span className="truncate">{option.label}</span>
-                    {option.sublabel && (
-                      <span className="text-[11px] text-neutral-400 font-normal truncate">
-                        ({option.sublabel})
-                      </span>
-                    )}
-                  </div>
-
-                  {isSelected && (
-                    <Check className="w-3.5 h-3.5 text-white stroke-[2.5] shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+        {!hasValue && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.sublabel ? `${option.label} — ${option.sublabel}` : option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400"
+        aria-hidden="true"
+      />
     </div>
   );
 }
