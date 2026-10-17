@@ -50,6 +50,10 @@ export async function verifyAdminToken(
     } = await authClient.auth.getUser(token);
 
     if (error || !user) {
+      console.warn(
+        '[admin-auth] token rejected by Supabase Auth:',
+        error?.message ?? 'no user returned'
+      );
       return { authorized: false };
     }
 

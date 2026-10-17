@@ -4,8 +4,9 @@ import { isSupabasePublicConfigured } from '@/lib/supabase-env';
 
 export async function GET(req: NextRequest) {
   try {
-    const hasToken = Boolean(req.cookies.get('thriv_admin_token')?.value);
-    if (!hasToken) {
+    const cookieToken = req.cookies.get('thriv_admin_token')?.value;
+    const bearerToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    if (!cookieToken && !bearerToken) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
