@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { MessageCircle, Mail, MapPin, Clock, ArrowUpRight, HelpCircle, ShieldCheck } from 'lucide-react';
+import { MessageCircle, Mail, MapPin, Clock, ArrowUpRight, HelpCircle } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Contact Us - WhatsApp, Email & Support',

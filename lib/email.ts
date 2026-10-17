@@ -6,6 +6,8 @@
  * If RESEND_API_KEY is unset, a clearly marked stub log is emitted.
  */
 
+import { errorMessage } from '@/lib/errors';
+
 interface SendOrderEmailParams {
   orderNumber: string;
   customerName: string;
@@ -90,8 +92,8 @@ https://thriv-five.vercel.app
 
     console.log(`[Resend Success] Confirmation email sent for order ${params.orderNumber} (id: ${resData?.id})`);
     return { success: true };
-  } catch (err: any) {
-    console.error('[Resend Error] Network error sending email:', err?.message || err);
-    return { success: false, error: err?.message };
+  } catch (err) {
+    console.error('[Resend Error] Network error sending email:', errorMessage(err, 'unknown error'));
+    return { success: false, error: errorMessage(err, 'Network error sending email') };
   }
 }

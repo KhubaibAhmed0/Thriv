@@ -3,14 +3,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { SlidersHorizontal, ArrowUpDown, X, Search, Sparkles } from 'lucide-react';
+import { ArrowUpDown, X, Search, Sparkles } from 'lucide-react';
 import { products as initialProducts } from '@/data/products';
 import { ProductCard } from '@/components/ProductCard';
 import { CustomDropdown, type DropdownOption } from '@/components/ui/CustomDropdown';
-import type { Condition, Brand, Product } from '@/types';
+import type { Brand, Product } from '@/types';
 
 const BRANDS: Brand[] = ['Zara', 'Bershka', 'Calvin Klein', 'H&M', 'Old Navy', 'Thriv'];
-const CONDITIONS: Condition[] = ['Premium', 'Excellent', 'Very Good'];
 
 const brandOptions: DropdownOption[] = [
   { value: 'all', label: 'All Brands' },

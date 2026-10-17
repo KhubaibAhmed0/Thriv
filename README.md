@@ -30,15 +30,14 @@ Thriv is a Karachi-based curated thrift store specializing in 1-of-1 branded den
 
 ## 📁 Key Routes & Architecture
 
-* `/` — Complete 10-section homepage (Hero carousel, Browse shop with stacked drop card, Shop The Look, You May Also Like, Why Choose Thriv trust pillars).
+* `/` — Homepage (Hero carousel, Browse Shop grid, promo tiles, lifestyle banner, You May Also Like rail, Why Choose Thriv trust pillars).
 * `/shop` — Catalog with URL query synchronization, category pills (Jeans, Graphic Tees), custom popover filter dropdowns, and responsive 4-column grid.
-* `/product/[slug]` — Static-rendered product detail pages (SSG) with laid-flat measurements, thrift 1-of-1 locking vs merch size pickers, and trust cues.
+* `/product/[slug]` — Server-rendered product detail pages (live database catalogue) with laid-flat measurements, thrift 1-of-1 locking vs merch size pickers, and trust cues.
 * `/about` — Real brand story, sourcing and disinfection processes, and curation philosophy.
 * `/faq` — CSS-only accordion covering sizing, delivery, payment methods, and returns.
 * `/cart` — Cart management with 1-of-1 thrift enforcement and delivery fee calculation.
 * `/checkout` — Checkout form with Pakistani WhatsApp number validation, payment selection, and mandatory final sale policy consent.
 * `/order/[orderNumber]` — Order confirmation with step-by-step next steps and direct WhatsApp confirmation deep link.
-* `/styleguide` — Living design system and token reference.
 * `/api/orders` — Orders endpoint generating `THR-YYYYMMDD-XXXXXX` order references.
 
 ---

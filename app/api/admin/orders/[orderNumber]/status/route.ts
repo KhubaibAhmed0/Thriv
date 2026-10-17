@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { errorMessage } from '@/lib/errors';
 
 const UpdateStatusSchema = z.object({
   status: z
@@ -112,10 +113,10 @@ export async function PATCH(
       status: status || currentOrder.status,
       payment_status: payment_status || currentOrder.payment_status,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[/api/admin/orders/.../status] Error:', err);
     return NextResponse.json(
-      { error: err.message || 'Internal server error' },
+      { error: errorMessage(err, 'Internal server error') },
       { status: 500 }
     );
   }

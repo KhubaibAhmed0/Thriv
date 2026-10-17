@@ -3,20 +3,17 @@
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import {
   Upload,
   X,
-  Plus,
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
-  Package,
   Sparkles,
-  Shirt,
   Scissors,
 } from 'lucide-react';
 import { AdminNavHeader } from '@/components/admin/AdminNavHeader';
+import { errorMessage } from '@/lib/errors';
 import { AdminDropdown } from '@/components/admin/AdminDropdown';
 
 const KNOWN_BRANDS = ['Zara', 'Bershka', 'Calvin Klein', 'H&M', 'Old Navy', 'Thriv'];
@@ -46,9 +43,9 @@ const CONDITION_OPTIONS = [
   { value: 'Very Good', label: 'Very Good', sublabel: 'Authentic vintage character', dotColor: '#2E5E2E' },
 ];
 
-export function AddProductForm() {
-  const router = useRouter();
+type CreatedProduct = { name: string; slug: string };
 
+export function AddProductForm() {
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('Zara');
   const [customBrand, setCustomBrand] = useState('');
@@ -80,7 +77,7 @@ export function AddProductForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createdProduct, setCreatedProduct] = useState<any | null>(null);
+  const [createdProduct, setCreatedProduct] = useState<CreatedProduct | null>(null);
 
   // Handle image selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,8 +192,8 @@ export function AddProductForm() {
       }
 
       setCreatedProduct(data.product);
-    } catch (err: any) {
-      setError(err?.message || 'Network error while creating product.');
+    } catch (err) {
+      setError(errorMessage(err, 'Network error while creating product.'));
     } finally {
       setSubmitting(false);
     }
@@ -430,7 +427,7 @@ export function AddProductForm() {
                     <AdminDropdown
                       options={CONDITION_OPTIONS}
                       value={condition}
-                      onChange={(val) => setCondition(val as any)}
+                      onChange={(val) => setCondition(val as 'Premium' | 'Excellent' | 'Very Good')}
                     />
                   </div>
                 ) : (

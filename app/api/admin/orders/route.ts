@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { errorMessage } from '@/lib/errors';
+
+interface AdminOrderRow {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  customer_phone: string;
+  city: string;
+  province: string;
+  total_pkr: number;
+  payment_method: string;
+  payment_status: string;
+  status: string;
+  created_at: string;
+  delivered_at: string | null;
+  order_items: { id: string }[] | null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -44,7 +61,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const formattedOrders = (orders || []).map((o: any) => ({
+    const formattedOrders = (orders || []).map((o: AdminOrderRow) => ({
       id: o.id,
       order_number: o.order_number,
       customer_name: o.customer_name,
@@ -64,10 +81,10 @@ export async function GET(req: NextRequest) {
       configured: true,
       orders: formattedOrders,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[/api/admin/orders] Unexpected error:', err);
     return NextResponse.json(
-      { error: err.message || 'Failed to fetch orders' },
+      { error: errorMessage(err, 'Failed to fetch orders') },
       { status: 500 }
     );
   }

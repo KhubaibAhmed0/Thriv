@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Sparkles, Tag } from 'lucide-react';
+import { Tag } from 'lucide-react';
 
 interface CategoryFilterRowProps {
   currentCategory?: string;

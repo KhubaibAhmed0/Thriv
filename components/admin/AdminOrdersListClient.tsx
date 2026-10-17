@@ -1,18 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AdminNavHeader } from '@/components/admin/AdminNavHeader';
+import { STATUS_CONFIG, paymentLabel } from '@/lib/orderLabels';
 import {
   Search,
   RefreshCw,
-  LogOut,
   ChevronRight,
-  Clock,
-  CheckCircle2,
-  Truck,
-  XCircle,
   AlertCircle,
   Package,
   Bell,
@@ -48,57 +44,8 @@ const FILTER_CHIPS = [
 
 type FilterType = (typeof FILTER_CHIPS)[number]['id'];
 
-// Status badge styling per section 6
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; bg: string; text: string; border: string; icon: React.ComponentType<{ className?: string }> }
-> = {
-  new: {
-    label: 'New',
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-500',
-    border: 'border-amber-500/30',
-    icon: Clock,
-  },
-  confirmed: {
-    label: 'Confirmed',
-    bg: 'bg-neutral-800',
-    text: 'text-neutral-200',
-    border: 'border-neutral-700',
-    icon: CheckCircle2,
-  },
-  shipped: {
-    label: 'Shipped',
-    bg: 'bg-sky-500/10',
-    text: 'text-sky-400',
-    border: 'border-sky-500/30',
-    icon: Truck,
-  },
-  delivered: {
-    label: 'Delivered',
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-400',
-    border: 'border-emerald-500/30',
-    icon: CheckCircle2,
-  },
-  cancelled: {
-    label: 'Cancelled',
-    bg: 'bg-neutral-900',
-    text: 'text-neutral-500 line-through',
-    border: 'border-neutral-800',
-    icon: XCircle,
-  },
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  'cash-on-delivery': 'COD',
-  cod: 'COD',
-  'bank-transfer': 'Bank Transfer',
-  bank_transfer: 'Bank Transfer',
-  easypaisa: 'EasyPaisa',
-  jazzcash: 'JazzCash',
-  card: 'Card',
-};
+// Status badge styling and payment labels now live in lib/orderLabels.ts
+// (audit F-60 — they used to be duplicated across four files).
 
 function formatRelativeTime(dateString: string): string {
   const diffSec = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
@@ -143,6 +90,9 @@ export default function AdminOrdersListClient() {
     try {
       const stored = localStorage.getItem('thriv_opened_orders');
       if (stored) {
+        // Mount-time external-store read (localStorage) — hydration-safe in an
+        // effect; not a cascading-render pattern.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setOpenedOrders(new Set(JSON.parse(stored)));
       }
     } catch {
@@ -162,9 +112,10 @@ export default function AdminOrdersListClient() {
     });
   };
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    setError(null);
+  // Initial `loading` state covers the first fetch; refresh callers set the
+  // spinner themselves so poll ticks stay silent and the mount effect body
+  // performs no synchronous setState (react-hooks/set-state-in-effect).
+  const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/orders');
       if (res.status === 401 || res.status === 403) {
@@ -176,6 +127,7 @@ export default function AdminOrdersListClient() {
         setError(data.error || 'Failed to fetch orders');
         setOrders([]);
       } else {
+        setError(null);
         const fetched = data.orders || [];
         setOrders(fetched);
         // Seed seen orders ref to prevent re-toast on existing orders
@@ -186,11 +138,14 @@ export default function AdminOrdersListClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
+    // Initial fetch on mount: state updates land after the network await; the
+    // lint rule's interprocedural heuristic treats the call as synchronous.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   // New-order polling: refresh the list every 30s so fresh orders appear and
   // raise a toast without a manual refresh.
@@ -247,14 +202,6 @@ export default function AdminOrdersListClient() {
     };
   }, [router]);
 
-  const handleSignOut = async () => {
-    try {
-      await fetch('/api/admin/auth/logout', { method: 'POST' });
-    } finally {
-      router.replace('/admin/login');
-    }
-  };
-
   // Filter & Search logic
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -285,6 +232,7 @@ export default function AdminOrdersListClient() {
       <AdminNavHeader
         onRefresh={() => {
           setNewOrdersCount(0);
+          setLoading(true);
           fetchOrders();
         }}
         loading={loading}
@@ -483,7 +431,7 @@ export default function AdminOrdersListClient() {
 
                       {/* Payment Method */}
                       <span className="text-[10px] text-neutral-400">
-                        {PAYMENT_LABELS[order.payment_method] || order.payment_method}
+                        {paymentLabel(order.payment_method, 'list') || order.payment_method}
                       </span>
                     </div>
 

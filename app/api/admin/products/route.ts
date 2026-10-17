@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { errorMessage } from '@/lib/errors';
 
 function generateSlug(name: string): string {
   const base = name
@@ -34,8 +35,8 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ products: products || [] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ error: errorMessage(err, 'Server error') }, { status: 500 });
   }
 }
 
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
     const brand = formData.get('brand')?.toString().trim();
     const category = formData.get('category')?.toString().trim() || 'jeans';
     const subcategory = formData.get('subcategory')?.toString().trim() || '';
+    const isFeatured = formData.get('isFeatured') === 'true';
     const condition = formData.get('condition')?.toString().trim() || 'Premium';
     const priceStr = formData.get('price')?.toString().trim();
     const isMerch = formData.get('isMerch') === 'true';
@@ -96,7 +98,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let measurements: any = null;
+    let measurements: Record<string, unknown> | null = null;
     if (measurementsRaw) {
       try {
         measurements = JSON.parse(measurementsRaw);
@@ -156,6 +158,8 @@ export async function POST(req: NextRequest) {
         name,
         brand,
         category,
+        subcategory: subcategory || null,
+        is_featured: isFeatured,
         price_pkr: price,
         condition: isMerch ? null : condition,
         is_merch: isMerch,
@@ -179,10 +183,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, product: newProduct });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[/api/admin/products] Unexpected error:', err);
     return NextResponse.json(
-      { error: err?.message || 'Failed to create product' },
+      { error: errorMessage(err, 'Failed to create product') },
       { status: 500 }
     );
   }

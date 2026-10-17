@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { errorMessage } from '@/lib/errors';
 
 export async function GET(
   req: NextRequest,
@@ -46,16 +47,16 @@ export async function GET(
     // Sort events newest first
     if (Array.isArray(order.events)) {
       order.events.sort(
-        (a: any, b: any) =>
+        (a: { created_at: string }, b: { created_at: string }) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     }
 
     return NextResponse.json({ order });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[/api/admin/orders/[orderNumber]] Error:', err);
     return NextResponse.json(
-      { error: err.message || 'Internal server error' },
+      { error: errorMessage(err, 'Internal server error') },
       { status: 500 }
     );
   }

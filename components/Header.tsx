@@ -8,15 +8,18 @@ import { useCart } from '@/components/CartProvider';
 
 export function Header() {
   const pathname = usePathname();
-  if (pathname?.startsWith('/admin')) {
-    return null;
-  }
-
   const { totalCount } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchInput, setShowSearchInput] = useState(false);
   const router = useRouter();
+
+  // Admin screens have their own chrome — render nothing there.
+  // (Hooks stay above this early return: audit F-65 — they used to run
+  // conditionally, violating the rules of hooks.)
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -48,7 +48,7 @@ This document contains the complete history, architectural decisions, credential
 - **Framework**: Next.js 16.3.5 (Turbopack, App Router)
 - **UI & Styling**: React 19, Tailwind CSS v4, Lucide Icons
 - **Form & Data Validation**: Zod (`^4.6.5`)
-- **Database**: Supabase PostgreSQL (`@supabase/supabase-js`) with **graceful fallback** (checkout functions 100% smoothly with or without database keys)
+- **Database**: Supabase PostgreSQL (`@supabase/supabase-js`) — the database is the single source of truth for products and orders. Orders fail closed: an unconfigured or unavailable backend returns HTTP 503 instead of fabricating a confirmation (audit F-05); the static seed array only backs the local-dev catalogue.
 - **Admin Auth**: Supabase Auth (email + password) + `admins` table membership check. All `/admin` pages are guarded by `proxy.ts`; all `/api/admin/*` routes self-guard via `lib/admin-auth.ts`. Both **fail closed**.
 - **Project Directory**: `C:\Users\InaequoSolutions-PC\OneDrive\Desktop\hasan bhai project\thriv`
 
@@ -76,11 +76,12 @@ thriv/
 │   ├── CheckoutForm.tsx            # Checkout form, Pakistani provinces, payment tabs, final sale checkbox
 │   ├── OrderConfirmationClient.tsx # Order summary, step-by-step Faysal Bank transfer, WhatsApp CTA
 │   ├── WhatsAppFAB.tsx             # Floating WhatsApp button wired to 0324-8188616
-│   └── Navbar.tsx & Footer.tsx     # Branded header with cart counter and footer with admin link
+│   └── Header.tsx & Footer.tsx     # Branded header with cart counter and footer with admin link
 ├── data/
-│   └── products.ts                 # 32 total products (28 vintage jeans + 4 anime tees)
+│   └── products.ts                 # Static seed catalogue: 31 products (27 vintage jeans + 4 anime tees). The live site reads from Supabase.
 ├── lib/
 │   ├── admin-auth.ts               # Fail-closed admin token verification (cookie or Bearer header)
+│   ├── orderLabels.ts              # Single source for order status/payment labels (audit F-60)
 │   ├── supabase-env.ts             # Single source of truth for Supabase env config + placeholder guards
 │   └── supabase-server.ts          # Service-role Supabase client (server only)
 ├── proxy.ts                        # Next.js 16 proxy (successor of middleware.ts) — protects /admin/*
@@ -98,10 +99,10 @@ During development, the following specific adjustments were made per user reques
 3. **Custom Filter Dropdowns**: Replaced native browser `<select>` tags on `/shop` with custom styled pill popovers (`CustomDropdown.tsx`) with condition grade color dots (`#5A4A2F`, `#1E3A5F`, `#2E5E2E`).
 4. **Real Client Credentials**: Replaced dummy payment details with Hasan Bhai's real Faysal Bank IBAN and WhatsApp.
 5. **Admin Portal (`/admin`)**: Built an admin portal backed by Supabase Auth (email + password) featuring:
-   - Total Sales & Order count metrics.
-   - Status filters (`Pending`, `Confirmed`, `Dispatched`, `Delivered`, `Cancelled`).
+   - Sales & order count metrics, plus product management (add product with photo upload, activate/hide, price and stock editing).
+   - Status filters (`New`, `Confirmed`, `Shipped`, `Delivered`, `Cancelled`).
    - **1-Click WhatsApp Direct Chat**: Generates a pre-filled WhatsApp message with the customer's name, order items, total, and delivery address for instant order confirmation.
-6. **Supabase Database with Graceful Fallback**: Created the SQL migrations under `supabase/migrations/` (authoritative) — see §7. If Supabase keys are not set in Vercel, the checkout **never breaks**—orders are routed directly to WhatsApp. **Warning:** an older legacy `supabase/schema.sql` (it granted the public anon key read access to every order) was deleted during the 2026-10-17 security pass. Never re-add or run SQL that creates `USING (true)` policies on `orders`.
+6. **Supabase Database with Graceful Fallback**: Created the SQL migrations under `supabase/migrations/` (authoritative) — see §7. If Supabase keys are missing, checkout fails closed with a clear "temporarily unavailable" message (HTTP 503) — an order is never fabricated or silently lost (audit F-05). Customers can always reach the store on WhatsApp (0324-8188616). **Warning:** an older legacy `supabase/schema.sql` (it granted the public anon key read access to every order) was deleted during the 2026-10-17 security pass. Never re-add or run SQL that creates `USING (true)` policies on `orders`.
 
 ---
 
@@ -127,9 +128,9 @@ During development, the following specific adjustments were made per user reques
 ## 7. Current Project Status & What's Left
 
 - **Development Status**: **100% Complete and Production-Ready** (security-hardened 2026-10-17 — see `FIX_LOG.md`).
-- **Live URL**: `https://thriv-five.vercel.app` (HTTP 200 on all 45 routes).
+- **Live URL**: `https://thriv-five.vercel.app` (all public routes re-verified after each fix batch — see `FIX_LOG.md`).
 - **Optional Next Steps for Hasan Bhai**:
   1. Add `https://thriv-five.vercel.app` to the `@thriv.pk` Instagram bio.
   2. Connect a custom domain (e.g. `thriv.pk`) in Vercel Settings → Domains (optional).
-  3. Supabase is already configured and live (project `Thriv`). For a *fresh* environment, apply `supabase/migrations/` in filename order (`20260920_initial_schema.sql` → `20260920_place_order_rpc.sql` → `20260921_products_storage.sql`) and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in Vercel (Production **and** Preview). Never use or restore the deleted legacy `schema.sql`.
+  3. Supabase is already configured and live (project `Thriv`). For a *fresh* environment, apply `supabase/migrations/` in filename order (`20260920_initial_schema.sql` → `20260920_place_order_rpc.sql` → `20260921_products_storage.sql` → the 2026-10-17 audit migrations `20261017_b2_data_integrity.sql`, `20261017_b3_place_order_v3.sql`, `20261017_b4_data_truth.sql`) and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in Vercel (Production **and** Preview). Never use or restore the deleted legacy `schema.sql`.
   4. Read `FIX_LOG.md` for the full 2026-10 audit remediation log (what was fixed, live probes, and remaining recommendations).
