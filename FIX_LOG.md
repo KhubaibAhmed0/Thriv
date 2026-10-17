@@ -87,6 +87,55 @@ Operational notes:
 
 ---
 
-## Batches B2–B6 — pending
+## Batch B2 — Data integrity
 
-Applying in report order: B2 (data integrity, F-04…), B3 (purchase path, F-05…), B4 (dead code & data truth), B5 (UX/a11y), B6 (hardening). Each will get its own section here with the same evidence format.
+**Findings closed:** F-04 (P0), F-11 (P1), F-12 (P1), F-54 (P2)
+**Branch:** `fix/b2-data-integrity`
+
+### What was wrong
+
+| Finding | Problem |
+| :--- | :--- |
+| F-04 | Every status change (including shipped/delivered) ran `stock = 0` on each order line — one "Mark Shipped" click permanently sold out merch whose stock had already been decremented at checkout, and there was no edit screen to fix it. |
+| F-11 | The 1-of-1 thrift rule existed only in UI code; the DB had no constraint and `PATCH /products/:id` accepted any stock (a thrift piece could be set to 50). |
+| F-12 | No transition guards anywhere: delivered → cancelled restored stock for goods the customer had; cancelled → shipped re-zeroed; repeated cancels re-restored; `delivered_at` was never cleared; `order_events` recorded nonsensical paths. |
+| F-54 | `place_order` validated each JSON line independently: `[{slug, 1}, {slug, 1}]` against stock 1 passed the check and died on `CHECK (stock >= 0)` as an opaque 500 — a legitimate 2-size merch cart triggered it. |
+
+### Changes
+
+- **New `supabase/migrations/20261017_b2_data_integrity.sql`** (applied to the live DB — see below):
+  - `place_order()` v2 — per-slug aggregation: locks each distinct slug once (`FOR UPDATE`), sums quantities per slug for validation, subtotal and decrement; the item snapshot stays per line (sizes can differ).
+  - `update_order_status(p_order_number, p_new_status, p_note, p_actor)` — **the only writer of order status**. Locks the order row; forward-only state machine with skips allowed (`new → confirmed|shipped|delivered|cancelled`, `confirmed → shipped|delivered|cancelled`, `shipped → delivered|cancelled`; delivered/cancelled terminal); same-status is a no-op; sets/clears `delivered_at`; on cancel restores stock exactly once (merch `+qty` aggregated per product, thrift back to 1) and writes the `order_events` row — all atomic. Raises `P0001` (invalid transition / unknown status) and `P0002` (order not found).
+  - `products_thrift_one_of_one` CHECK (`is_merch OR stock <= 1`), added idempotently.
+- **`app/api/admin/orders/[orderNumber]/status/route.ts`** — rewritten: all stock-writing code removed (F-04); status changes call the RPC, mapping `P0001 → 409`, `P0002 → 404`; payment status stays independent of fulfillment state.
+- **`app/api/admin/products/[id]/route.ts`** (PATCH) and **`app/api/admin/products/route.ts`** (create) — stock validated: integer ≥ 0, thrift ≤ 1, empty updates rejected (F-11).
+- **`components/admin/OrderDetailClient.tsx`** — fulfillment buttons mirror the state machine (Confirm only from new; Mark Shipped from new/confirmed; Cancel until delivered; delivered/cancelled show a terminal note) (F-12).
+- **`supabase/README.md`** — migration list updated.
+
+### Operational actions taken
+
+- Migration applied to the live DB via `psycopg` after a full test pass inside a rolled-back transaction (no `supabase_migrations` history table — see header note). Live objects verified after apply: constraint present, `update_order_status` present, `place_order` is v2 (`GROUP BY 1` marker), 2 real orders and all stock counters untouched.
+
+### Verification
+
+| Check | Result |
+| :--- | :--- |
+| Transactional DB battery (fixture orders, rolled back) | ✅ 24/24: every transition edge (skip-forward allowed; delivered → cancelled/shipped and cancelled → confirmed rejected; no-ops silent), cancel restore exactness (merch +2 → 7, thrift → 1, single event row), constraint blocks thrift stock=2, F-54 duplicate-thrift-line attack blocked (`Only 1 remaining`), duplicate merch lines aggregate + decrement exactly once (2 snapshot lines), idempotent repeat creates nothing, negative quantity rejected; **rollback confirmed zero data/schema leaked** |
+| `npx tsc --noEmit` | ✅ clean |
+| `npm run build` | ✅ |
+| `npx tsx scripts/check-admin-guard.ts` | ✅ all assertions pass |
+| `npx eslint .` | 59 → 57 problems (all remaining pre-existing) |
+| Local prod build + real backend HTTP battery | ✅ 8/8: login 200; delivered → shipped **409** (no change); unknown order **404**; same-status no-op **200**; thrift `stock=2` **400**; non-numeric stock **400**; orders list 200 (2 orders); live data verified untouched (statuses and stock counters) |
+| Create-route probe (`POST` thrift, stock=5) | ✅ route now rejects with clean **400**; the pre-route build was stopped by the DB constraint (23514) without creating a row — both layers verified, products total unchanged (32) |
+
+### Deploy verification (2026-10-17)
+
+**Preview** — branch `fix/b2-data-integrity` deployed READY (previews on this project are behind Vercel Authentication, so mechanics only).
+
+**Production** — branch commit `8dbbfbc`, merge commit `3be7b8c`, deployment READY. Same battery against `thriv-five.vercel.app`: **8/8 pass** — `delivered → shipped` rejected **409** with `Invalid status transition: delivered -> shipped`; unknown order **404**; same-status no-op **200**; thrift `stock=2` rejected **400** (`One-of-one thrift pieces can only have stock 0 or 1.`); non-numeric stock **400**; orders list 200 with both real orders intact (`THR-00001` delivered, `THR-00002` new) and stock counters unchanged.
+
+---
+
+## Batches B3–B6 — pending
+
+Applying in report order: B3 (purchase path, F-05…), B4 (dead code & data truth), B5 (UX/a11y), B6 (hardening). Each will get its own section here with the same evidence format.
