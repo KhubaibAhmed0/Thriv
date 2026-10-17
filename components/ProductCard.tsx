@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { Heart, Check } from 'lucide-react';
 import type { Product } from '@/types';
@@ -8,6 +8,7 @@ import { ProductImage } from '@/components/ProductImage';
 import { Badge } from '@/components/ui/Badge';
 import { formatPrice } from '@/lib/formatPrice';
 import { useQuickAdd } from '@/lib/useQuickAdd';
+import { useWishlist } from '@/components/WishlistProvider';
 
 interface ProductCardProps {
   product: Product;
@@ -15,7 +16,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const { isSaved, toggle } = useWishlist();
+  const saved = isSaved(product.slug);
 
   // Size-aware quick add (audit F-20): multi-size merch opens an inline size
   // picker instead of silently adding a hardcoded size.
@@ -33,15 +35,17 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
+    toggle(product.slug);
   };
 
   return (
     <div
       className={[
-        'group relative bg-[#EDEBE8] rounded-[16px] p-3 transition-all duration-200',
+        'group relative bg-card rounded-[16px] p-3 transition-all duration-200',
         'hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] flex flex-col justify-between',
-        isSoldOut ? 'opacity-80' : '',
+        // No whole-card opacity for sold-out pieces: blending every label at
+        // 80% dropped all card text below 4.5:1 (Lighthouse color-contrast).
+        // The SOLD badge + disabled button carry the state instead.
       ].join(' ')}
     >
       {/* Top Image Container */}
@@ -57,35 +61,38 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           className="transition-transform duration-300 group-hover:scale-[1.01]"
         />
 
-        {/* Wishlist Heart Button top-right */}
+        {/* Wishlist Heart Button top-right — 44px hit area (audit F-73) */}
         <button
           type="button"
           onClick={handleWishlistToggle}
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-          className={[
-            'absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm',
-            'flex items-center justify-center shadow-[0_1px_4px_rgba(0,0,0,0.1)]',
-            'hover:scale-110 active:scale-95 transition-all duration-150 z-10 cursor-pointer',
-          ].join(' ')}
+          aria-pressed={saved}
+          aria-label={
+            saved
+              ? `Remove ${product.name} from saved items`
+              : `Save ${product.name} to wishlist`
+          }
+          className="absolute top-1.5 right-1.5 w-11 h-11 z-10 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-150 cursor-pointer"
         >
-          <Heart
-            className={[
-              'w-4 h-4 transition-colors',
-              isWishlisted
-                ? 'fill-[#8B2020] text-[#8B2020]'
-                : 'text-[#111111] stroke-[1.75]',
-            ].join(' ')}
-          />
+          <span className="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center shadow-[0_1px_4px_rgba(0,0,0,0.1)]">
+            <Heart
+              className={[
+                'w-4 h-4 transition-colors',
+                saved
+                  ? 'fill-badge-sold-text text-badge-sold-text'
+                  : 'text-black stroke-[1.75]',
+              ].join(' ')}
+            />
+          </span>
         </button>
 
         {/* Top-Left Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
           {product.isMerch ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide bg-[#111111] text-white">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide bg-black text-white">
               IN-HOUSE MERCH
             </span>
           ) : (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/90 backdrop-blur-sm text-[#111111] border border-[#E2E0DC]/60">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/90 backdrop-blur-sm text-black border border-border/60">
               1 OF 1 THRIFT
             </span>
           )}
@@ -99,8 +106,8 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       <div className="mt-3 px-1 flex flex-col flex-1 justify-between">
         <div>
           {/* Brand & Category Label */}
-          <div className="flex items-center justify-between gap-2 text-xs text-[#9A9A9A]">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-[#444444]">
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-text">
+            <span className="font-semibold uppercase tracking-wider text-[11px] text-body">
               {product.brand}
             </span>
             <span>
@@ -110,7 +117,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
           {/* Product Title */}
           <Link href={`/product/${product.slug}`} className="block mt-1">
-            <h3 className="text-sm font-semibold text-[#111111] leading-snug line-clamp-1 group-hover:text-black transition-colors">
+            <h3 className="text-sm font-semibold text-black leading-snug line-clamp-1 group-hover:text-black transition-colors">
               {product.name}
             </h3>
           </Link>
@@ -136,9 +143,9 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
         </div>
 
         {/* Price & Action Row */}
-        <div className="mt-3 pt-2 border-t border-[#E2E0DC]/60 flex items-center justify-between">
+        <div className="mt-3 pt-2 border-t border-border/60 flex items-center justify-between">
           <div>
-            <p className="text-sm font-bold text-[#111111]">
+            <p className="text-sm font-bold text-black">
               {formatPrice(product.price)}
             </p>
           </div>
@@ -146,7 +153,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           {isSoldOut ? (
             <button
               disabled
-              className="bg-[#F5E6E6] text-[#8B2020] text-xs font-semibold px-3 py-1.5 rounded-full cursor-not-allowed"
+              className="bg-badge-sold-bg text-badge-sold-text text-xs font-semibold px-3 py-1.5 rounded-full cursor-not-allowed"
             >
               Sold Out
             </button>
@@ -165,7 +172,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                     e.stopPropagation();
                     pickSize(sz);
                   }}
-                  className="min-w-7 h-7 px-2 rounded-full text-[11px] font-bold bg-white text-[#111111] border border-[#E2E0DC] hover:border-[#111111] transition-colors cursor-pointer"
+                  className="min-w-7 h-7 px-2 rounded-full text-[11px] font-bold bg-white text-black border border-border hover:border-black transition-colors cursor-pointer"
                 >
                   {sz}
                 </button>
@@ -176,14 +183,13 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               type="button"
               onClick={handleAddToCart}
               className={[
-                'inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-full transition-all duration-150 active:scale-95 cursor-pointer',
+                'inline-flex items-center gap-1.5 text-xs font-medium px-4 min-h-11 rounded-full transition-all duration-150 active:scale-95 cursor-pointer',
                 justAdded
-                  ? 'bg-[#3A6B35] text-white shadow-sm'
+                  ? 'bg-badge-promo-text text-white shadow-sm'
                   : inCart
                   ? 'bg-[#2a2a2a] text-white'
-                  : 'bg-[#111111] text-white hover:bg-[#2a2a2a] shadow-[0_1px_4px_rgba(0,0,0,0.12)]',
+                  : 'bg-black text-white hover:bg-[#2a2a2a] shadow-[0_1px_4px_rgba(0,0,0,0.12)]',
               ].join(' ')}
-              aria-label={`Add ${product.name} to cart`}
             >
               {justAdded ? (
                 <>
@@ -195,26 +201,16 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               ) : (
                 <span>Add To Cart</span>
               )}
+              <span className="sr-only"> — {product.name}</span>
             </button>
           )}
         </div>
 
-        {/* Decorative Trust Dot Pattern (matches reference Best Seller pattern) */}
-        <div className="flex items-center gap-1.5 mt-2.5 pt-1.5">
-          <span className="text-[10px] text-[#9A9A9A] font-medium">
+        {/* Trust fact — the old fake 4.5-star dot row was removed (audit F-72) */}
+        <div className="mt-2.5 pt-1.5">
+          <span className="text-[10px] text-muted-text font-medium">
             {product.isMerch ? 'Heavyweight 240 GSM' : 'Disinfected & Handpicked'}
           </span>
-          <div className="flex gap-0.5 ml-auto" aria-hidden="true">
-            {[1, 2, 3, 4, 5].map((dot) => (
-              <div
-                key={dot}
-                className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  backgroundColor: dot <= 4 ? '#111111' : '#D0CDC7',
-                }}
-              />
-            ))}
-          </div>
         </div>
 
       </div>

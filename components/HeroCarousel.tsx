@@ -63,21 +63,26 @@ export function HeroCarousel() {
         </span>
       </div>
 
-      {/* Slide indicators — top right */}
-      <div className="absolute top-5 right-5 flex items-center gap-1.5" aria-label="Slide navigation">
+      {/* Slide indicators — top right, 44px hit areas (audit F-73) */}
+      <div className="absolute top-2 right-2 flex items-center" aria-label="Slide navigation">
         {slides.map((s, i) => (
           <button
             key={s.id}
             type="button"
             onClick={() => setCurrent(i)}
             aria-label={`Go to slide ${i + 1}`}
-            className={[
-              'rounded-full transition-all duration-300',
-              i === current
-                ? 'w-5 h-1.5 bg-white'
-                : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70',
-            ].join(' ')}
-          />
+            aria-current={i === current}
+            className="w-11 h-11 flex items-center justify-center cursor-pointer"
+          >
+            <span
+              className={[
+                'rounded-full transition-all duration-300',
+                i === current
+                  ? 'w-5 h-1.5 bg-white'
+                  : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70',
+              ].join(' ')}
+            />
+          </button>
         ))}
       </div>
 
@@ -111,20 +116,20 @@ export function HeroCarousel() {
         <div className="flex items-center gap-3">
           <Link
             href={slide.cta.href}
-            className="inline-flex items-center gap-2 bg-white text-[#111111] font-bold text-sm px-6 py-3 rounded-full hover:bg-white/92 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.25)] active:scale-[0.98]"
+            className="inline-flex items-center gap-2 bg-white text-black font-bold text-sm px-6 py-3 rounded-full hover:bg-white/92 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.25)] active:scale-[0.98]"
           >
             {slide.cta.label}
           </Link>
         </div>
       </div>
 
-      {/* Arrow Controls */}
-      <div className="absolute bottom-7 right-7 flex items-center gap-2">
+      {/* Arrow Controls — 44px hit areas (audit F-73) */}
+      <div className="absolute bottom-5 right-5 flex items-center gap-2">
         <button
           type="button"
           onClick={prev}
           aria-label="Previous slide"
-          className="w-9 h-9 rounded-full bg-white/15 border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-colors active:scale-95 cursor-pointer"
+          className="w-11 h-11 rounded-full bg-white/15 border border-white/25 flex items-center justify-center text-white hover:bg-white/25 transition-colors active:scale-95 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4 stroke-[2]" />
         </button>
@@ -132,7 +137,7 @@ export function HeroCarousel() {
           type="button"
           onClick={next}
           aria-label="Next slide"
-          className="w-9 h-9 rounded-full bg-white/90 border border-white/25 flex items-center justify-center text-[#111111] hover:bg-white transition-colors active:scale-95 cursor-pointer"
+          className="w-11 h-11 rounded-full bg-white/90 border border-white/25 flex items-center justify-center text-black hover:bg-white transition-colors active:scale-95 cursor-pointer"
         >
           <ChevronRight className="w-4 h-4 stroke-[2]" />
         </button>

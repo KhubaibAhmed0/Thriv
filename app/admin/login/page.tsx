@@ -50,11 +50,11 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-[#111111]">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-black">
       <div className="w-full max-w-sm bg-[#181818] border border-[#282828] rounded-[20px] p-6 sm:p-8 shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-[10px] bg-white flex items-center justify-center text-[#111111] shrink-0">
+          <div className="w-10 h-10 rounded-[10px] bg-white flex items-center justify-center text-black shrink-0">
             <Lock className="w-5 h-5" />
           </div>
           <div>
@@ -109,7 +109,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 text-sm font-bold bg-white text-[#111111] hover:bg-neutral-200 rounded-full flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full py-3.5 text-sm font-bold bg-white text-black hover:bg-neutral-200 rounded-full flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>

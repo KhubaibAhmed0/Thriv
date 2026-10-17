@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
-import { sendOrderConfirmationEmail } from '@/lib/email';
+import { sendOrderConfirmationEmail, isEmailConfigured } from '@/lib/email';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 import {
   normalizePakistaniPhone,
@@ -200,5 +200,10 @@ export async function POST(req: NextRequest) {
     result.idempotent ? '(idempotent replay)' : ''
   );
 
-  return NextResponse.json(result, { status: 201 });
+  // email_enabled lets the confirmation page phrase email copy honestly
+  // (audit F-26) instead of promising a receipt that was never sent.
+  return NextResponse.json(
+    { ...result, email_enabled: isEmailConfigured() },
+    { status: 201 }
+  );
 }

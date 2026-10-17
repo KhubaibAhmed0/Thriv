@@ -145,7 +145,7 @@ export default function AdminProductsListClient() {
   const soldOutItems = products.filter((p) => p.stock === 0).length;
 
   return (
-    <div className="min-h-screen bg-[#111111] text-white pb-20">
+    <div className="min-h-screen bg-black text-white pb-20">
       <AdminNavHeader
         onRefresh={() => {
           setLoading(true);
@@ -170,7 +170,7 @@ export default function AdminProductsListClient() {
           <div className="flex items-center gap-3">
             <Link
               href="/admin/products/new"
-              className="inline-flex items-center gap-2 bg-white text-[#111111] hover:bg-neutral-200 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-full transition-colors shadow-lg"
+              className="inline-flex items-center gap-2 bg-white text-black hover:bg-neutral-200 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-full transition-colors shadow-lg"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               Add New Item
@@ -221,7 +221,7 @@ export default function AdminProductsListClient() {
                   onClick={() => setActiveFilter(chip.id as 'all' | 'jeans' | 'merch' | 'sold-out')}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-colors cursor-pointer ${
                     active
-                      ? 'bg-white text-[#111111] border-white'
+                      ? 'bg-white text-black border-white'
                       : 'bg-[#1a1a1a] text-neutral-400 border-[#2a2a2a] hover:border-neutral-600 hover:text-neutral-200'
                   }`}
                 >
@@ -255,7 +255,7 @@ export default function AdminProductsListClient() {
             </p>
             <Link
               href="/admin/products/new"
-              className="inline-flex items-center gap-1.5 bg-white text-[#111111] text-xs font-bold px-4 py-2 rounded-full mt-4 hover:bg-neutral-200 transition-colors"
+              className="inline-flex items-center gap-1.5 bg-white text-black text-xs font-bold px-4 py-2 rounded-full mt-4 hover:bg-neutral-200 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Item Now
@@ -298,7 +298,7 @@ export default function AdminProductsListClient() {
                         {product.brand}
                       </span>
                       {product.condition && (
-                        <span className="text-[10px] font-semibold bg-white/90 backdrop-blur-md px-2 py-0.5 rounded-full text-[#111111]">
+                        <span className="text-[10px] font-semibold bg-white/90 backdrop-blur-md px-2 py-0.5 rounded-full text-black">
                           {product.condition}
                         </span>
                       )}

@@ -280,7 +280,7 @@ export function CheckoutForm() {
   if (!isHydrated) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -289,8 +289,8 @@ export function CheckoutForm() {
     if (orderPlaced) {
       return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium text-[#444444]">Placing your order and generating receipt...</p>
+          <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-body">Placing your order and generating receipt...</p>
         </div>
       );
     }
@@ -303,21 +303,21 @@ export function CheckoutForm() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-[#9A9A9A] mb-8">
-        <Link href="/" className="hover:text-[#111111] transition-colors">Home</Link>
+      <nav className="flex items-center gap-2 text-xs text-muted-text mb-8">
+        <Link href="/" className="hover:text-black transition-colors">Home</Link>
         <span>/</span>
-        <Link href="/cart" className="hover:text-[#111111] transition-colors">Cart</Link>
+        <Link href="/cart" className="hover:text-black transition-colors">Cart</Link>
         <span>/</span>
-        <span className="text-[#111111] font-medium">Checkout</span>
+        <span className="text-black font-medium">Checkout</span>
       </nav>
 
-      <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight mb-8">Checkout</h1>
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-black tracking-tight mb-8">Checkout</h1>
 
       {/* Error summary — role="alert" + placed above the fold (audit F-28) */}
       {hasFieldErrors && (
-        <div role="alert" className="mb-6 p-3 bg-[#F5E6E6] border border-[#E2C2C2] rounded-[12px] flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-[#8B2020] shrink-0 mt-0.5" />
-          <p className="text-xs text-[#8B2020] font-medium leading-relaxed">
+        <div role="alert" className="mb-6 p-3 bg-badge-sold-bg border border-badge-sold-border rounded-[12px] flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-badge-sold-text shrink-0 mt-0.5" />
+          <p className="text-xs text-badge-sold-text font-medium leading-relaxed">
             Please fix the highlighted fields below and try again.
           </p>
         </div>
@@ -326,10 +326,10 @@ export function CheckoutForm() {
       {/* Submit error — announced, with the WhatsApp fallback when checkout
           is down (audit F-05/F-28) */}
       {submitError && (
-        <div role="alert" className="mb-6 p-3 bg-[#F5E6E6] border border-[#E2C2C2] rounded-[12px] flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-[#8B2020] shrink-0 mt-0.5" />
+        <div role="alert" className="mb-6 p-3 bg-badge-sold-bg border border-badge-sold-border rounded-[12px] flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-badge-sold-text shrink-0 mt-0.5" />
           <div className="space-y-2.5">
-            <p className="text-xs text-[#8B2020] font-medium leading-relaxed">{submitError}</p>
+            <p className="text-xs text-badge-sold-text font-medium leading-relaxed">{submitError}</p>
             {checkoutUnavailable && (
               <a
                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
@@ -337,7 +337,7 @@ export function CheckoutForm() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-[#111111] text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-black transition-colors"
+                className="inline-flex items-center gap-1.5 bg-black text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-black transition-colors"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 Order on WhatsApp instead
@@ -354,8 +354,8 @@ export function CheckoutForm() {
           <div className="lg:col-span-7 space-y-6">
 
             {/* Delivery Details */}
-            <div className="bg-[#EDEBE8] rounded-[20px] p-5 sm:p-6 border border-[#E2E0DC]">
-              <h2 className="text-base font-extrabold text-[#111111] mb-5">Delivery Details</h2>
+            <div className="bg-card rounded-[20px] p-5 sm:p-6 border border-border">
+              <h2 className="text-base font-extrabold text-black mb-5">Delivery Details</h2>
 
               <div className="space-y-4">
                 {/* Full Name */}
@@ -455,7 +455,7 @@ export function CheckoutForm() {
                           <option key={p} value={p}>{p}</option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9A9A9A] pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-text pointer-events-none" />
                     </div>
                   </FieldGroup>
                 </div>
@@ -475,8 +475,8 @@ export function CheckoutForm() {
             </div>
 
             {/* Payment Method */}
-            <div className="bg-[#EDEBE8] rounded-[20px] p-5 sm:p-6 border border-[#E2E0DC]">
-              <h2 className="text-base font-extrabold text-[#111111] mb-5">Payment Method</h2>
+            <div className="bg-card rounded-[20px] p-5 sm:p-6 border border-border">
+              <h2 className="text-base font-extrabold text-black mb-5">Payment Method</h2>
 
               <div className="space-y-2.5">
                 {PAYMENT_METHODS.map((method) => {
@@ -490,8 +490,8 @@ export function CheckoutForm() {
                         'flex items-start gap-3 p-4 rounded-[14px] border cursor-pointer transition-all',
                         isDisabled ? 'opacity-50 cursor-not-allowed' : '',
                         isSelected
-                          ? 'bg-white border-[#111111] shadow-sm'
-                          : 'bg-white/60 border-[#E2E0DC] hover:border-[#111111]',
+                          ? 'bg-white border-black shadow-sm'
+                          : 'bg-white/60 border-border hover:border-black',
                       ].join(' ')}
                     >
                       <input
@@ -501,12 +501,12 @@ export function CheckoutForm() {
                         checked={isSelected}
                         onChange={() => !isDisabled && setPaymentMethod(method.id)}
                         disabled={isDisabled}
-                        className="mt-0.5 accent-[#111111] cursor-pointer"
+                        className="mt-0.5 accent-black cursor-pointer"
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-semibold text-[#111111]">{method.label}</span>
+                        <span className="text-sm font-semibold text-black">{method.label}</span>
                         {method.note && (
-                          <p className="text-xs text-[#9A9A9A] mt-0.5">{method.note}</p>
+                          <p className="text-xs text-muted-text mt-0.5">{method.note}</p>
                         )}
                       </div>
                     </label>
@@ -516,26 +516,26 @@ export function CheckoutForm() {
 
               {/* Account details panel for bank/mobile wallets */}
               {showAccountDetails && (
-                <div className="mt-4 p-4 bg-white rounded-[14px] border border-[#E2E0DC]">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#9A9A9A] mb-2.5">
+                <div className="mt-4 p-4 bg-white rounded-[14px] border border-border">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-text mb-2.5">
                     Account Details: {paymentMethod === 'bank-transfer' ? 'Faysal Bank' : paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}
                   </p>
                   
                   {paymentMethod === 'bank-transfer' ? (
-                    <div className="space-y-1.5 text-xs text-[#111111] bg-[#F5F3F0] p-3 rounded-[10px] border border-[#E2E0DC]">
-                      <p><span className="text-[#9A9A9A]">Bank:</span> <strong className="font-semibold">Faysal Bank</strong></p>
-                      <p><span className="text-[#9A9A9A]">Account Title:</span> <strong className="font-semibold">HASSAN RAZA</strong></p>
-                      <p><span className="text-[#9A9A9A]">IBAN:</span> <strong className="font-mono select-all">PK05FAYS3605301000003020</strong></p>
+                    <div className="space-y-1.5 text-xs text-black bg-page p-3 rounded-[10px] border border-border">
+                      <p><span className="text-muted-text">Bank:</span> <strong className="font-semibold">Faysal Bank</strong></p>
+                      <p><span className="text-muted-text">Account Title:</span> <strong className="font-semibold">HASSAN RAZA</strong></p>
+                      <p><span className="text-muted-text">IBAN:</span> <strong className="font-mono select-all">PK05FAYS3605301000003020</strong></p>
                     </div>
                   ) : (
-                    <div className="space-y-1.5 text-xs text-[#111111] bg-[#F5F3F0] p-3 rounded-[10px] border border-[#E2E0DC]">
-                      <p><span className="text-[#9A9A9A]">Provider:</span> <strong className="font-semibold">{paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}</strong></p>
-                      <p><span className="text-[#9A9A9A]">Account Title:</span> <strong className="font-semibold">HASSAN RAZA</strong></p>
-                      <p><span className="text-[#9A9A9A]">Account / Mobile:</span> <strong className="font-mono select-all">0324-8188616</strong></p>
+                    <div className="space-y-1.5 text-xs text-black bg-page p-3 rounded-[10px] border border-border">
+                      <p><span className="text-muted-text">Provider:</span> <strong className="font-semibold">{paymentMethod === 'easypaisa' ? 'EasyPaisa' : 'JazzCash'}</strong></p>
+                      <p><span className="text-muted-text">Account Title:</span> <strong className="font-semibold">HASSAN RAZA</strong></p>
+                      <p><span className="text-muted-text">Account / Mobile:</span> <strong className="font-mono select-all">0324-8188616</strong></p>
                     </div>
                   )}
 
-                  <p className="text-[11px] text-[#444444] mt-3 leading-relaxed">
+                  <p className="text-[11px] text-body mt-3 leading-relaxed">
                     After placing your order, send the payment screenshot on WhatsApp to <strong>0324-8188616</strong> with your order number as reference.
                   </p>
                 </div>
@@ -543,7 +543,7 @@ export function CheckoutForm() {
             </div>
 
             {/* Final Sale Checkbox — Required */}
-            <div className="bg-[#F5E6E6] rounded-[16px] p-4 sm:p-5 border border-[#E2C2C2]">
+            <div className="bg-badge-sold-bg rounded-[16px] p-4 sm:p-5 border border-badge-sold-border">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -553,13 +553,13 @@ export function CheckoutForm() {
                     setSubmitError(null);
                     setCheckoutUnavailable(false);
                   }}
-                  className="mt-0.5 w-4 h-4 accent-[#8B2020] cursor-pointer shrink-0"
+                  className="mt-0.5 w-4 h-4 accent-badge-sold-text cursor-pointer shrink-0"
                 />
                 <div>
-                  <span className="text-xs font-bold text-[#8B2020]">
+                  <span className="text-xs font-bold text-badge-sold-text">
                     I understand all sales are final: no returns, no exchanges.
                   </span>
-                  <p className="text-[10px] text-[#8B2020]/80 mt-1 leading-relaxed">
+                  <p className="text-[10px] text-badge-sold-text/80 mt-1 leading-relaxed">
                     Thrift pieces are one-of-one with exact measurements on the listing. Please verify measurements match your size before confirming. Once this order is placed and dispatched, it cannot be reversed.
                   </p>
                 </div>
@@ -570,8 +570,8 @@ export function CheckoutForm() {
 
           {/* ── Right: Sticky Order Summary ── */}
           <div className="lg:col-span-5">
-            <div className="bg-[#EDEBE8] rounded-[20px] p-5 sm:p-6 border border-[#E2E0DC] shadow-[0_2px_12px_rgba(0,0,0,0.06)] sticky top-24">
-              <h2 className="text-base font-extrabold text-[#111111] mb-4">Your Order</h2>
+            <div className="bg-card rounded-[20px] p-5 sm:p-6 border border-border shadow-[0_2px_12px_rgba(0,0,0,0.06)] sticky top-24">
+              <h2 className="text-base font-extrabold text-black mb-4">Your Order</h2>
 
               {/* Items compact list */}
               <div className="space-y-3 mb-4">
@@ -590,32 +590,32 @@ export function CheckoutForm() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#111111] truncate">{item.product.name}</p>
-                      <p className="text-[10px] text-[#9A9A9A]">
+                      <p className="text-xs font-semibold text-black truncate">{item.product.name}</p>
+                      <p className="text-[10px] text-muted-text">
                         {item.selectedSize && `Size ${item.selectedSize} · `}
                         {item.quantity > 1 ? `×${item.quantity}` : null}
                       </p>
                       <Badge variant="condition" label={item.product.condition} />
                     </div>
-                    <p className="text-sm font-black text-[#111111] shrink-0">
+                    <p className="text-sm font-black text-black shrink-0">
                       {formatPrice(item.product.price * item.quantity)}
                     </p>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-[#E2E0DC] pt-4 space-y-2 text-sm">
-                <div className="flex justify-between text-[#444444]">
+              <div className="border-t border-border pt-4 space-y-2 text-sm">
+                <div className="flex justify-between text-body">
                   <span>Subtotal</span>
-                  <span className="font-semibold text-[#111111]">{formatPrice(subtotal)}</span>
+                  <span className="font-semibold text-black">{formatPrice(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-[#444444]">
+                <div className="flex justify-between text-body">
                   <span>Delivery (Nationwide)</span>
-                  <span className="font-semibold text-[#111111]">{formatPrice(deliveryFee)}</span>
+                  <span className="font-semibold text-black">{formatPrice(deliveryFee)}</span>
                 </div>
               </div>
 
-              <div className="border-t border-[#E2E0DC] mt-3 pt-3 flex justify-between text-base font-extrabold text-[#111111] mb-5">
+              <div className="border-t border-border mt-3 pt-3 flex justify-between text-base font-extrabold text-black mb-5">
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>
               </div>
@@ -624,7 +624,7 @@ export function CheckoutForm() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 bg-[#111111] text-white font-bold text-sm py-4 rounded-full hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-[0.99] cursor-pointer"
+                className="w-full inline-flex items-center justify-center gap-2 bg-black text-white font-bold text-sm py-4 rounded-full hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-[0.99] cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
@@ -639,7 +639,7 @@ export function CheckoutForm() {
                 )}
               </button>
 
-              <p className="text-[10px] text-center text-[#9A9A9A] mt-3 leading-relaxed">
+              <p className="text-[10px] text-center text-muted-text mt-3 leading-relaxed">
                 By placing this order, you agree to Thriv&apos;s final sale policy. No returns or exchanges.
               </p>
             </div>
@@ -654,10 +654,10 @@ export function CheckoutForm() {
 // ── Helpers ───────────────────────────────────────────────────────────
 function inputClass(hasError: boolean) {
   return [
-    'w-full text-sm text-[#111111] placeholder:text-[#9A9A9A] bg-white border rounded-[10px] px-4 py-2.5 outline-none transition-all',
+    'w-full text-sm text-black placeholder:text-muted-text bg-white border rounded-[10px] px-4 py-2.5 outline-none transition-all',
     hasError
-      ? 'border-[#8B2020] focus:ring-2 focus:ring-[#8B2020]/20'
-      : 'border-[#E2E0DC] focus:border-[#111111] focus:ring-2 focus:ring-[#111111]/8',
+      ? 'border-badge-sold-text focus:ring-2 focus:ring-badge-sold-text/20'
+      : 'border-border focus:border-black focus:ring-2 focus:ring-black/8',
   ].join(' ');
 }
 
@@ -678,14 +678,14 @@ function FieldGroup({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-xs font-bold text-[#111111] mb-1.5">
+      <label htmlFor={id} className="block text-xs font-bold text-black mb-1.5">
         {label}
-        {required && <span className="text-[#8B2020] ml-0.5">*</span>}
-        {hint && <span className="font-normal text-[#9A9A9A] ml-1">({hint})</span>}
+        {required && <span className="text-badge-sold-text ml-0.5">*</span>}
+        {hint && <span className="font-normal text-muted-text ml-1">({hint})</span>}
       </label>
       {children}
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-xs text-[#8B2020] mt-1 flex items-center gap-1">
+        <p id={`${id}-error`} role="alert" className="text-xs text-badge-sold-text mt-1 flex items-center gap-1">
           <AlertCircle className="w-3 h-3 shrink-0" />
           {error}
         </p>

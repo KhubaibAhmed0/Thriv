@@ -17,7 +17,7 @@ export default async function OrderPage({ params }: OrderPageProps) {
   const { orderNumber } = await params;
 
   return (
-    <main className="min-h-screen bg-[#F5F3F0]">
+    <main className="min-h-screen bg-page">
       <OrderConfirmationClient orderNumber={orderNumber} />
     </main>
   );

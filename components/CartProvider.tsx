@@ -22,6 +22,8 @@ interface CartContextType {
   changeSize: (productId: string, toSize: string, fromSize?: string) => void;
   clearCart: () => void;
   isInCart: (productId: string, selectedSize?: string) => boolean;
+  /** Screen-reader announcement channel (audit F-70). */
+  announce: (message: string) => void;
   /** True once the localStorage cart has been read (audit F-07). */
   isHydrated: boolean;
 }
@@ -31,6 +33,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, dispatch] = useReducer(cartReducer, initialCart);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
 
   // Initialize from localStorage on mount
   useEffect(() => {
@@ -91,6 +94,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const announce = (message: string) => {
+    setAnnouncement(message);
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -105,10 +112,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         changeSize,
         clearCart,
         isInCart,
+        announce,
         isHydrated,
       }}
     >
       {children}
+      {/* Polite live region for cart/wishlist feedback (audit F-70) */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </span>
     </CartContext.Provider>
   );
 }

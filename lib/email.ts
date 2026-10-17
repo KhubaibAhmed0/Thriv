@@ -3,7 +3,9 @@
  *
  * Transactional order confirmation email via Resend.
  * Server-side only. Uses RESEND_API_KEY (non-public env var).
- * If RESEND_API_KEY is unset, a clearly marked stub log is emitted.
+ * If RESEND_API_KEY is unset, the send is reported as NOT successful and a
+ * clearly marked stub log is emitted — callers and UI copy must never claim
+ * an email was sent when it was not (audit F-26).
  */
 
 import { errorMessage } from '@/lib/errors';
@@ -22,6 +24,12 @@ interface SendOrderEmailParams {
   }>;
 }
 
+/** True when the Resend API key is present and looks real (audit F-26). */
+export function isEmailConfigured(): boolean {
+  const apiKey = process.env.RESEND_API_KEY;
+  return Boolean(apiKey && apiKey !== '<resend_api_key>');
+}
+
 export async function sendOrderConfirmationEmail(params: SendOrderEmailParams): Promise<{
   success: boolean;
   stub?: boolean;
@@ -32,11 +40,11 @@ export async function sendOrderConfirmationEmail(params: SendOrderEmailParams): 
   // Otherwise default to 'onboarding@resend.dev' which works out-of-the-box on Resend free tier.
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
-  if (!apiKey || apiKey === '<resend_api_key>') {
+  if (!isEmailConfigured()) {
     console.warn(
       `[Resend STUB] RESEND_API_KEY is not set in environment variables. Order confirmation email for ${params.orderNumber} to ${params.customerEmail} was skipped.`
     );
-    return { success: true, stub: true };
+    return { success: false, stub: true };
   }
 
   const itemsList = params.items

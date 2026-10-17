@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function CheckoutPage() {
   return (
-    <main className="min-h-screen bg-[#F5F3F0]">
+    <main className="min-h-screen bg-page">
       <CheckoutForm />
     </main>
   );

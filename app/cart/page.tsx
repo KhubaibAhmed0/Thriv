@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function CartPage() {
   return (
-    <main className="min-h-screen bg-[#F5F3F0]">
+    <main className="min-h-screen bg-page">
       <CartPageClient />
     </main>
   );

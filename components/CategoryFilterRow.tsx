@@ -52,13 +52,13 @@ export function CategoryFilterRow({
   };
 
   return (
-    <div className="w-full overflow-hidden py-3 sm:py-4 border-b border-[#E2E0DC]/50">
+    <div className="w-full overflow-hidden py-3 sm:py-4 border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 snap-x-mandatory">
           
           {/* Quick Indicator Chip */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#EDEBE8] text-[#111111] text-xs font-semibold shrink-0">
-            <Tag className="w-3.5 h-3.5 text-[#111111]" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card text-black text-xs font-semibold shrink-0">
+            <Tag className="w-3.5 h-3.5 text-black" />
             <span>Categories</span>
           </div>
 
@@ -75,8 +75,8 @@ export function CategoryFilterRow({
                 className={[
                   'px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer snap-start',
                   isSelected
-                    ? 'bg-[#111111] text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
-                    : 'bg-white text-[#444444] hover:text-[#111111] border border-[#E2E0DC] hover:border-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.03)]',
+                    ? 'bg-black text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
+                    : 'bg-white text-body hover:text-black border border-border hover:border-black shadow-[0_1px_2px_rgba(0,0,0,0.03)]',
                 ].join(' ')}
                 aria-pressed={isSelected}
               >

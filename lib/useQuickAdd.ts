@@ -13,7 +13,7 @@ import type { Product } from '@/types';
 import { useCart } from '@/components/CartProvider';
 
 export function useQuickAdd(product: Product) {
-  const { addItem, isInCart } = useCart();
+  const { addItem, isInCart, announce } = useCart();
   const [showSizePicker, setShowSizePicker] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -23,6 +23,10 @@ export function useQuickAdd(product: Product) {
 
   const add = (size?: string) => {
     addItem(product, product.isMerch ? size : product.size ?? undefined);
+    // Screen-reader feedback for the silent add (audit F-70).
+    announce(
+      `${product.name}${size ? `, size ${size}` : ''} added to cart`
+    );
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1200);
   };

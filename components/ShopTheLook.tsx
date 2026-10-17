@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { Product } from '@/types';
 import { ProductImage } from '@/components/ProductImage';
 import { Badge } from '@/components/ui/Badge';
@@ -14,57 +14,53 @@ interface ShopTheLookProps {
   items: Product[];
 }
 
-export function ShopTheLook({ title = 'Item In This Look', items }: ShopTheLookProps) {
+/**
+ * "Pairs well with" module for the PDP. The previous version faked a look
+ * navigation (dead arrows) and hard-coded a specific outfit onto every
+ * product page — audit F-23. Copy is now derived from the actual items and
+ * the fake multi-look arrows are gone.
+ */
+export function ShopTheLook({ title = 'Pairs Well With', items }: ShopTheLookProps) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  const brands = Array.from(new Set(items.map((item) => String(item.brand)))).slice(0, 3);
+
   return (
     <section className="my-12 sm:my-16">
-      <div className="bg-[#EDEBE8] rounded-[20px] p-4 sm:p-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <div className="bg-card rounded-[20px] p-4 sm:p-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          
-          {/* Left: Lifestyle Photo Container with Look Navigation */}
+
+          {/* Left: honest pairing panel derived from the real items */}
           <div className="lg:col-span-6 relative">
-            <div className="relative rounded-[16px] overflow-hidden bg-[#E2DFD9] aspect-[4/5] flex items-center justify-center">
-              {/* Deterministic lifestyle placeholder */}
+            <div className="relative rounded-[16px] overflow-hidden aspect-[4/5] flex items-center justify-center">
               <div className="w-full h-full p-8 flex flex-col justify-between bg-gradient-to-br from-[#374151] via-[#1F2937] to-[#111827] text-white">
                 <div className="flex justify-between items-start">
                   <span className="text-xs font-semibold uppercase tracking-widest px-3 py-1 bg-white/20 backdrop-blur-md rounded-full">
-                    Look 01 · Streetwear
+                    Style Pairing
                   </span>
-                  <span className="text-xs text-white/70">Karachi Street Style</span>
+                  <span className="text-xs text-white/70">Thriv · Karachi</span>
                 </div>
 
                 <div>
-                  <h4 className="text-2xl sm:text-3xl font-bold leading-tight">
-                    Baggy Denim & Heavyweight Graphic Tee
-                  </h4>
+                  <p className="text-2xl sm:text-3xl font-bold leading-tight">
+                    {items.length} one-of-one {items.length === 1 ? 'piece' : 'pieces'} from the same drop
+                  </p>
                   <p className="text-sm text-white/75 mt-2 max-w-sm">
-                    Handpicked Zara 1-of-1 vintage wash paired with in-house Akira screenprint.
+                    Handpicked from {brands.join(' · ')} — disinfected and shipped
+                    nationwide from Karachi.
                   </p>
                 </div>
               </div>
-
-              {/* Navigation Arrows like reference */}
-              <button
-                type="button"
-                aria-label="Previous look"
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Next look"
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
           </div>
 
-          {/* Right: Items in this look list */}
+          {/* Right: items that pair with the current product */}
           <div className="lg:col-span-6">
-            <h3 className="text-xl sm:text-2xl font-bold text-[#111111] mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-black mb-6">
               {title}
-            </h3>
+            </h2>
 
             <div className="space-y-4">
               {items.slice(0, 3).map((item) => (
@@ -80,7 +76,7 @@ export function ShopTheLook({ title = 'Item In This Look', items }: ShopTheLookP
 }
 
 /**
- * One row in the look list. Extracted so each row can use the quick-add
+ * One row in the pairing list. Extracted so each row can use the quick-add
  * hook with its own size-picker state (audit F-20).
  */
 function LookItem({ item }: { item: Product }) {
@@ -90,11 +86,11 @@ function LookItem({ item }: { item: Product }) {
   const isSold = item.stock <= 0;
 
   return (
-    <div className="bg-white rounded-[16px] p-3.5 sm:p-4 border border-[#E2E0DC] flex items-center justify-between gap-4 shadow-sm hover:border-[#111111] transition-colors">
+    <div className="bg-white rounded-[16px] p-3.5 sm:p-4 border border-border flex items-center justify-between gap-4 shadow-sm hover:border-black transition-colors">
       {/* Thumbnail */}
       <Link
         href={`/product/${item.slug}`}
-        className="w-16 h-20 sm:w-20 sm:h-24 rounded-[12px] overflow-hidden shrink-0 bg-[#F5F3F0] relative"
+        className="w-16 h-20 sm:w-20 sm:h-24 rounded-[12px] overflow-hidden shrink-0 bg-page relative"
       >
         <ProductImage
           slug={item.slug}
@@ -108,45 +104,31 @@ function LookItem({ item }: { item: Product }) {
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#9A9A9A]">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-text">
             {item.brand}
           </span>
           <Badge variant="condition" label={item.condition} />
         </div>
 
         <Link href={`/product/${item.slug}`} className="block mt-0.5">
-          <p className="text-sm font-semibold text-[#111111] truncate hover:underline">
+          <p className="text-sm font-semibold text-black truncate hover:underline">
             {item.name}
           </p>
         </Link>
 
-        <p className="text-xs text-[#9A9A9A] mt-0.5">
+        <p className="text-xs text-muted-text mt-0.5">
           {item.isMerch ? 'Multi-size Merch' : `One-of-one · Size ${item.size}`}
         </p>
-
-        {/* Dot Rating Pattern */}
-        <div className="flex items-center gap-1 mt-1.5" aria-hidden="true">
-          <span className="text-[10px] text-[#9A9A9A]">Curated</span>
-          <div className="flex gap-0.5 ml-1">
-            {[1, 2, 3, 4, 5].map((d) => (
-              <div
-                key={d}
-                className="w-1 h-1 rounded-full"
-                style={{ backgroundColor: d <= 4 ? '#111111' : '#E2E0DC' }}
-              />
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Price & Action */}
       <div className="text-right flex flex-col items-end gap-2 shrink-0">
-        <span className="text-sm sm:text-base font-bold text-[#111111]">
+        <span className="text-sm sm:text-base font-bold text-black">
           {formatPrice(item.price)}
         </span>
 
         {isSold ? (
-          <span className="text-[11px] font-medium text-[#8B2020] bg-[#F5E6E6] px-3 py-1 rounded-full">
+          <span className="text-[11px] font-medium text-badge-sold-text bg-badge-sold-bg px-3 py-1 rounded-full">
             Sold
           </span>
         ) : needsSizeChoice && showSizePicker ? (
@@ -160,7 +142,7 @@ function LookItem({ item }: { item: Product }) {
                 key={sz}
                 type="button"
                 onClick={() => pickSize(sz)}
-                className="min-w-6 h-6 px-1.5 rounded-full text-[10px] font-bold bg-white text-[#111111] border border-[#E2E0DC] hover:border-[#111111] transition-colors cursor-pointer"
+                className="min-w-8 h-8 px-1.5 rounded-full text-[10px] font-bold bg-white text-black border border-border hover:border-black transition-colors cursor-pointer"
               >
                 {sz}
               </button>
@@ -171,12 +153,12 @@ function LookItem({ item }: { item: Product }) {
             type="button"
             onClick={trigger}
             className={[
-              'text-xs font-medium px-3.5 py-1.5 rounded-full transition-all duration-150 active:scale-95 cursor-pointer',
+              'text-xs font-medium px-4 min-h-11 rounded-full transition-all duration-150 active:scale-95 cursor-pointer',
               justAdded
-                ? 'bg-[#3A6B35] text-white'
+                ? 'bg-badge-promo-text text-white'
                 : inCart
                 ? 'bg-[#2a2a2a] text-white'
-                : 'bg-[#111111] text-white hover:bg-[#2a2a2a]',
+                : 'bg-black text-white hover:bg-[#2a2a2a]',
             ].join(' ')}
           >
             {justAdded ? (
@@ -188,6 +170,7 @@ function LookItem({ item }: { item: Product }) {
             ) : (
               'Add To Cart'
             )}
+            <span className="sr-only"> — {item.name}</span>
           </button>
         )}
       </div>

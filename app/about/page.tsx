@@ -10,41 +10,41 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-[#F5F3F0]">
+    <main className="min-h-screen bg-page">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 
         {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[#9A9A9A] mb-8">
-          <Link href="/" className="hover:text-[#111111] transition-colors">Home</Link>
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-text mb-8">
+          <Link href="/" className="hover:text-black transition-colors">Home</Link>
           <span>/</span>
-          <span className="text-[#111111] font-medium">About</span>
+          <span className="text-black font-medium">About</span>
         </nav>
 
         {/* Hero Header */}
         <div className="mb-12">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#9A9A9A] mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-text mb-3">
             Karachi-Based · Nationwide Delivery
           </p>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#111111] leading-[1.08] tracking-tight">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-black leading-[1.08] tracking-tight">
             About Thriv
           </h1>
-          <p className="text-lg text-[#444444] mt-4 leading-relaxed max-w-2xl">
+          <p className="text-lg text-body mt-4 leading-relaxed max-w-2xl">
             Thriv is a curated thrift and streetwear store run out of Karachi. Every piece is handpicked, cleaned, and listed individually. No restocks, no bulk buying, just one piece at a time, done properly.
           </p>
         </div>
 
         {/* Section: What we do */}
-        <section className="mb-12 bg-[#EDEBE8] rounded-[20px] p-6 sm:p-8 border border-[#E2E0DC]">
+        <section className="mb-12 bg-card rounded-[20px] p-6 sm:p-8 border border-border">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-              <Sparkles className="w-5 h-5 text-[#111111]" />
+              <Sparkles className="w-5 h-5 text-black" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-[#111111]">How We Source</h2>
-              <p className="text-[#9A9A9A] text-xs mt-0.5 uppercase tracking-wider">The Curation Process</p>
+              <h2 className="text-xl font-extrabold text-black">How We Source</h2>
+              <p className="text-muted-text text-xs mt-0.5 uppercase tracking-wider">The Curation Process</p>
             </div>
           </div>
-          <div className="space-y-4 text-sm text-[#444444] leading-relaxed">
+          <div className="space-y-4 text-sm text-body leading-relaxed">
             <p>
               We source exclusively from international and branded inventory: H&amp;M, Zara, Bershka, Calvin Klein, and Old Navy. Every piece arrives as a physical item that we hold in Karachi.
             </p>
@@ -58,17 +58,17 @@ export default function AboutPage() {
         </section>
 
         {/* Section: Disinfection */}
-        <section className="mb-12 bg-[#EDEBE8] rounded-[20px] p-6 sm:p-8 border border-[#E2E0DC]">
+        <section className="mb-12 bg-card rounded-[20px] p-6 sm:p-8 border border-border">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-              <ShieldCheck className="w-5 h-5 text-[#111111]" />
+              <ShieldCheck className="w-5 h-5 text-black" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-[#111111]">The Disinfection Step</h2>
-              <p className="text-[#9A9A9A] text-xs mt-0.5 uppercase tracking-wider">Before Every Listing</p>
+              <h2 className="text-xl font-extrabold text-black">The Disinfection Step</h2>
+              <p className="text-muted-text text-xs mt-0.5 uppercase tracking-wider">Before Every Listing</p>
             </div>
           </div>
-          <div className="space-y-4 text-sm text-[#444444] leading-relaxed">
+          <div className="space-y-4 text-sm text-body leading-relaxed">
             <p>
               Every thrift item goes through a proper cleaning process before it reaches the listing stage. This is not optional; it is a non-negotiable step regardless of how clean the piece looks on arrival.
             </p>
@@ -79,17 +79,17 @@ export default function AboutPage() {
         </section>
 
         {/* Section: One-of-One */}
-        <section className="mb-12 bg-[#EDEBE8] rounded-[20px] p-6 sm:p-8 border border-[#E2E0DC]">
+        <section className="mb-12 bg-card rounded-[20px] p-6 sm:p-8 border border-border">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-              <Package className="w-5 h-5 text-[#111111]" />
+              <Package className="w-5 h-5 text-black" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-[#111111]">Why One-of-One Matters</h2>
-              <p className="text-[#9A9A9A] text-xs mt-0.5 uppercase tracking-wider">The Core of Curated Thrift</p>
+              <h2 className="text-xl font-extrabold text-black">Why One-of-One Matters</h2>
+              <p className="text-muted-text text-xs mt-0.5 uppercase tracking-wider">The Core of Curated Thrift</p>
             </div>
           </div>
-          <div className="space-y-4 text-sm text-[#444444] leading-relaxed">
+          <div className="space-y-4 text-sm text-body leading-relaxed">
             <p>
               Every thrift item at Thriv is a single piece with a single fixed size and a stock of exactly 1. There are no size variants on a thrift listing. There are no restocks. When an item sells, it&apos;s gone.
             </p>
@@ -103,17 +103,17 @@ export default function AboutPage() {
         </section>
 
         {/* Section: Anime Tees */}
-        <section className="mb-12 bg-[#EDEBE8] rounded-[20px] p-6 sm:p-8 border border-[#E2E0DC]">
+        <section className="mb-12 bg-card rounded-[20px] p-6 sm:p-8 border border-border">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-              <Shirt className="w-5 h-5 text-[#111111]" />
+              <Shirt className="w-5 h-5 text-black" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-[#111111]">The Anime Tee Line</h2>
-              <p className="text-[#9A9A9A] text-xs mt-0.5 uppercase tracking-wider">In-House Merch</p>
+              <h2 className="text-xl font-extrabold text-black">The Anime Tee Line</h2>
+              <p className="text-muted-text text-xs mt-0.5 uppercase tracking-wider">In-House Merch</p>
             </div>
           </div>
-          <div className="space-y-4 text-sm text-[#444444] leading-relaxed">
+          <div className="space-y-4 text-sm text-body leading-relaxed">
             <p>
               The anime tee line is Thriv&apos;s first in-house product. Four designs (Akira, Evangelion, Berserk, Cowboy Bebop) on 240 GSM combed cotton. Boxy streetwear fits, heavy enough that they don&apos;t go transparent, pre-shrunk so the size you order is the size you wear.
             </p>
@@ -124,17 +124,17 @@ export default function AboutPage() {
         </section>
 
         {/* Section: Delivery */}
-        <section className="mb-12 bg-[#EDEBE8] rounded-[20px] p-6 sm:p-8 border border-[#E2E0DC]">
+        <section className="mb-12 bg-card rounded-[20px] p-6 sm:p-8 border border-border">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-              <Truck className="w-5 h-5 text-[#111111]" />
+              <Truck className="w-5 h-5 text-black" />
             </div>
             <div>
-              <h2 className="text-xl font-extrabold text-[#111111]">Nationwide Delivery</h2>
-              <p className="text-[#9A9A9A] text-xs mt-0.5 uppercase tracking-wider">Rs 200 Flat</p>
+              <h2 className="text-xl font-extrabold text-black">Nationwide Delivery</h2>
+              <p className="text-muted-text text-xs mt-0.5 uppercase tracking-wider">Rs 200 Flat</p>
             </div>
           </div>
-          <div className="space-y-4 text-sm text-[#444444] leading-relaxed">
+          <div className="space-y-4 text-sm text-body leading-relaxed">
             <p>
               We dispatch from Karachi to all cities and towns across Pakistan. Delivery is Rs 200 flat, one price regardless of whether you&apos;re in Lahore, Faisalabad, Multan, Hyderabad, Quetta, Peshawar, or Gilgit.
             </p>
@@ -148,9 +148,9 @@ export default function AboutPage() {
         </section>
 
         {/* Final Sale Policy — Prominent */}
-        <div className="mb-12 bg-[#F5E6E6] rounded-[16px] p-5 sm:p-6 border border-[#E2C2C2]">
-          <h3 className="text-sm font-bold text-[#8B2020] mb-2">Final Sale: No Returns, No Exchanges</h3>
-          <p className="text-xs text-[#8B2020] leading-relaxed">
+        <div className="mb-12 bg-badge-sold-bg rounded-[16px] p-5 sm:p-6 border border-badge-sold-border">
+          <h3 className="text-sm font-bold text-badge-sold-text mb-2">Final Sale: No Returns, No Exchanges</h3>
+          <p className="text-xs text-badge-sold-text leading-relaxed">
             All sales at Thriv are strictly final. No returns or exchanges are accepted. This applies to both thrift items and graphic tees. Because thrift inventory is one-of-one, a returned piece cannot be re-listed in the same condition. This is why we invest heavily in accurate photography, exact measurements, and honest condition grading. Please read the listing carefully and check the measurements before placing your order.
           </p>
         </div>
@@ -159,12 +159,12 @@ export default function AboutPage() {
         <div className="text-center">
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 bg-[#111111] text-white font-bold text-sm px-8 py-4 rounded-full hover:bg-black transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+            className="inline-flex items-center gap-2 bg-black text-white font-bold text-sm px-8 py-4 rounded-full hover:bg-black transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
           >
             Browse the Collection <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-[#9A9A9A] mt-4">
-            Have a question? <a href="https://wa.me/923248188616" target="_blank" rel="noopener noreferrer" className="text-[#111111] font-semibold hover:underline">Chat on WhatsApp (0324-8188616) →</a>
+          <p className="text-xs text-muted-text mt-4">
+            Have a question? <a href="https://wa.me/923248188616" target="_blank" rel="noopener noreferrer" className="text-black font-semibold hover:underline">Chat on WhatsApp (0324-8188616) →</a>
           </p>
         </div>
 

@@ -54,7 +54,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const relatedProducts = [...sameCategory, ...others].slice(0, 3);
 
   return (
-    <main className="min-h-screen bg-[#F5F3F0]">
+    <main className="min-h-screen bg-page">
       <ProductDetailClient
         product={product}
         relatedProducts={relatedProducts}

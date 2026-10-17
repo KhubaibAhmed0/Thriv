@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { isEmailConfigured } from '@/lib/email';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export async function GET(
     const { data: order, error } = await supabase
       .from('orders')
       .select(
-        'order_number, status, payment_status, payment_method, subtotal_pkr, delivery_fee_pkr, total_pkr, created_at, order_items(name, brand, size, quantity, unit_price_pkr)'
+        'order_number, status, payment_status, payment_method, subtotal_pkr, delivery_fee_pkr, total_pkr, created_at, tracking_number, courier, order_items(name, brand, size, quantity, unit_price_pkr)'
       )
       .eq('order_number', orderNumber)
       .maybeSingle();
@@ -66,6 +67,8 @@ export async function GET(
         delivery_fee_pkr: order.delivery_fee_pkr,
         total_pkr: order.total_pkr,
         created_at: order.created_at,
+        tracking_number: order.tracking_number ?? null,
+        courier: order.courier ?? null,
         items: (order.order_items ?? []).map(
           (item: {
             name: string;
@@ -82,6 +85,8 @@ export async function GET(
           })
         ),
       },
+      // Lets the confirmation page phrase email claims honestly (F-26).
+      email_enabled: isEmailConfigured(),
     });
   } catch (err) {
     console.error('[/api/orders/[orderNumber]] Error:', err instanceof Error ? err.message : err);
