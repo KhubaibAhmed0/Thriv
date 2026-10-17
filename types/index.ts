@@ -70,6 +70,7 @@ export type CartAction =
   | { type: 'ADD_ITEM'; product: Product; selectedSize?: string }
   | { type: 'REMOVE_ITEM'; productId: string; selectedSize?: string }
   | { type: 'UPDATE_QUANTITY'; productId: string; quantity: number; selectedSize?: string }
+  | { type: 'CHANGE_SIZE'; productId: string; fromSize?: string; toSize: string }
   | { type: 'CLEAR_CART' };
 
 export type PaymentMethod =

@@ -39,7 +39,10 @@ export function ShopCatalog() {
     fetch('/api/products')
       .then((r) => r.json())
       .then((data) => {
-        if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+        // Accept empty results too — the API is now the source of truth
+        // (audit F-13); an empty catalogue must not be papered over with
+        // stale static seed products.
+        if (Array.isArray(data.products)) {
           setAllProducts(data.products);
         }
       })

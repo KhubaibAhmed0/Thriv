@@ -7,7 +7,7 @@ import type { Product } from '@/types';
 import { ProductImage } from '@/components/ProductImage';
 import { Badge } from '@/components/ui/Badge';
 import { formatPrice } from '@/lib/formatPrice';
-import { useCart } from '@/components/CartProvider';
+import { useQuickAdd } from '@/lib/useQuickAdd';
 
 interface ProductCardProps {
   product: Product;
@@ -15,25 +15,19 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
-  const { addItem, isInCart } = useCart();
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isAddedRecently, setIsAddedRecently] = useState(false);
+
+  // Size-aware quick add (audit F-20): multi-size merch opens an inline size
+  // picker instead of silently adding a hardcoded size.
+  const { sizes, needsSizeChoice, showSizePicker, justAdded, inCart, trigger, pickSize } =
+    useQuickAdd(product);
 
   const isSoldOut = product.stock <= 0;
-  const inCart = isInCart(product.id, product.isMerch ? 'L' : undefined);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (isSoldOut) return;
-
-    // For merch, default to 'L' if quick-added from card, full size picker on PDP
-    const defaultSize = product.isMerch ? 'L' : (product.size ?? undefined);
-    addItem(product, defaultSize);
-
-    setIsAddedRecently(true);
-    setTimeout(() => setIsAddedRecently(false), 1200);
+    trigger();
   };
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
@@ -156,13 +150,34 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             >
               Sold Out
             </button>
+          ) : needsSizeChoice && showSizePicker ? (
+            <div
+              className="flex items-center gap-1"
+              role="group"
+              aria-label={`Choose a size for ${product.name}`}
+            >
+              {sizes.map((sz) => (
+                <button
+                  key={sz}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pickSize(sz);
+                  }}
+                  className="min-w-7 h-7 px-2 rounded-full text-[11px] font-bold bg-white text-[#111111] border border-[#E2E0DC] hover:border-[#111111] transition-colors cursor-pointer"
+                >
+                  {sz}
+                </button>
+              ))}
+            </div>
           ) : (
             <button
               type="button"
               onClick={handleAddToCart}
               className={[
                 'inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-full transition-all duration-150 active:scale-95 cursor-pointer',
-                isAddedRecently
+                justAdded
                   ? 'bg-[#3A6B35] text-white shadow-sm'
                   : inCart
                   ? 'bg-[#2a2a2a] text-white'
@@ -170,7 +185,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
               ].join(' ')}
               aria-label={`Add ${product.name} to cart`}
             >
-              {isAddedRecently ? (
+              {justAdded ? (
                 <>
                   <Check className="w-3 h-3 stroke-[2.5]" />
                   <span>Added</span>

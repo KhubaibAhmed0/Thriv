@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle, MessageCircle, ShoppingBag, Package } from 'lucide-react';
+import { CheckCircle, MessageCircle, ShoppingBag } from 'lucide-react';
 import { formatPrice } from '@/lib/formatPrice';
 import type { CartItem } from '@/types';
 
@@ -13,6 +13,17 @@ const PAYMENT_LABELS: Record<string, string> = {
   'jazzcash': 'JazzCash',
   'card': 'Card',
 };
+
+// DB enum values → the client-side ids the UI already speaks.
+const ENUM_TO_CLIENT: Record<string, string> = {
+  cod: 'cash-on-delivery',
+  bank_transfer: 'bank-transfer',
+  easypaisa: 'easypaisa',
+  jazzcash: 'jazzcash',
+  card: 'card',
+};
+
+const SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 
 interface OrderData {
   orderNumber: string;
@@ -28,7 +39,83 @@ interface OrderData {
   deliveryFee: number;
   total: number;
   createdAt: string;
+  savedAt?: string;
   notes?: string;
+}
+
+interface ServerOrderItem {
+  name: string;
+  brand: string | null;
+  size: string | null;
+  quantity: number;
+  unit_price_pkr: number;
+}
+
+interface ServerOrder {
+  order_number: string;
+  status: string;
+  payment_status: string;
+  payment_method: string;
+  subtotal_pkr: number;
+  delivery_fee_pkr: number;
+  total_pkr: number;
+  created_at: string;
+  items: ServerOrderItem[];
+}
+
+/** Unified view model. PII fields exist only when the local snapshot does. */
+interface ViewOrder {
+  items: { name: string; brand?: string | null; size?: string | null; quantity: number; unitPrice: number }[];
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  paymentMethod: string;
+  customerName?: string;
+  email?: string;
+  whatsapp?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  notes?: string;
+}
+
+function snapshotToView(snap: OrderData): ViewOrder {
+  return {
+    customerName: snap.customerName,
+    email: snap.email,
+    whatsapp: snap.whatsapp,
+    address: snap.address,
+    city: snap.city,
+    province: snap.province,
+    notes: snap.notes,
+    paymentMethod: snap.paymentMethod,
+    subtotal: snap.subtotal,
+    deliveryFee: snap.deliveryFee,
+    total: snap.total,
+    items: (snap.items ?? []).map((item) => ({
+      name: item.product?.name ?? 'Item',
+      brand: item.product?.brand ?? null,
+      size: item.selectedSize ?? null,
+      quantity: item.quantity,
+      unitPrice: item.product?.price ?? 0,
+    })),
+  };
+}
+
+function serverToView(server: ServerOrder): ViewOrder {
+  return {
+    paymentMethod: ENUM_TO_CLIENT[server.payment_method] ?? server.payment_method,
+    subtotal: server.subtotal_pkr,
+    deliveryFee: server.delivery_fee_pkr,
+    total: server.total_pkr,
+    items: (server.items ?? []).map((item) => ({
+      name: item.name,
+      brand: item.brand,
+      size: item.size,
+      quantity: item.quantity,
+      unitPrice: item.unit_price_pkr,
+    })),
+  };
 }
 
 interface OrderConfirmationClientProps {
@@ -36,21 +123,60 @@ interface OrderConfirmationClientProps {
 }
 
 export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClientProps) {
-  const [order, setOrder] = useState<OrderData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [snapshotView, setSnapshotView] = useState<ViewOrder | null>(null);
+  const [serverView, setServerView] = useState<ViewOrder | null>(null);
+  const [serverDone, setServerDone] = useState(false);
+
+  // The page can render as soon as either source lands: the snapshot
+  // immediately (when present), otherwise the server lookup.
+  const loading = !serverDone && snapshotView === null;
 
   useEffect(() => {
+    let cancelled = false;
+
+    // 1. Local snapshot (fast path) — ignored when older than the TTL so a
+    //    shared device doesn't leak stale order details (audit F-58).
     try {
-      const stored = localStorage.getItem(`thriv_order_${orderNumber}`);
+      const key = `thriv_order_${orderNumber}`;
+      const stored = localStorage.getItem(key);
       if (stored) {
-        setOrder(JSON.parse(stored));
+        const parsed: OrderData = JSON.parse(stored);
+        const savedAt = parsed?.savedAt ? Date.parse(parsed.savedAt) : NaN;
+        if (Number.isFinite(savedAt) && Date.now() - savedAt <= SNAPSHOT_TTL_MS) {
+          setSnapshotView(snapshotToView(parsed));
+        } else {
+          localStorage.removeItem(key);
+        }
       }
     } catch {
-      // Silently fail — order details unavailable
-    } finally {
-      setLoading(false);
+      // Silently ignore — the server lookup below still covers the page.
     }
+
+    // 2. Server truth — authoritative items/totals, works cross-device.
+    fetch(`/api/orders/${encodeURIComponent(orderNumber)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.order) {
+          setServerView(serverToView(data.order as ServerOrder));
+        }
+      })
+      .catch(() => {
+        // Network hiccup: snapshot (if any) keeps the page useful.
+      })
+      .finally(() => {
+        if (!cancelled) setServerDone(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [orderNumber]);
+
+  // Server data wins for items/money/payment; PII comes only from the
+  // snapshot (the API intentionally returns none).
+  const view: ViewOrder | null = serverView
+    ? { ...(snapshotView ?? {}), ...serverView }
+    : snapshotView;
 
   const whatsappNumber = '923248188616';
   const whatsappMessage = encodeURIComponent(
@@ -58,8 +184,8 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
   );
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
-  const isNonCod = order &&
-    ['bank-transfer', 'easypaisa', 'jazzcash'].includes(order.paymentMethod);
+  const isNonCod =
+    view && ['bank-transfer', 'easypaisa', 'jazzcash'].includes(view.paymentMethod);
 
   if (loading) {
     return (
@@ -81,7 +207,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
           Order Placed Successfully
         </p>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111111] leading-tight">
-          Thank You{order ? `, ${order.customerName.split(' ')[0]}` : ''}!
+          Thank You{view?.customerName ? `, ${view.customerName.split(' ')[0]}` : ''}!
         </h1>
         <div className="mt-3 inline-block bg-[#EDEBE8] border border-[#E2E0DC] px-4 py-2 rounded-full">
           <p className="text-sm font-mono font-bold text-[#111111] tracking-wider">
@@ -89,8 +215,8 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
           </p>
         </div>
         <p className="text-sm text-[#444444] mt-3 leading-relaxed">
-          {order
-            ? `Confirmation has been sent to ${order.email} and will be messaged to ${order.whatsapp} shortly.`
+          {view?.email
+            ? `Confirmation will be sent to ${view.email} and messaged to ${view.whatsapp} shortly.`
             : 'Your order has been received. You will receive a confirmation on WhatsApp shortly.'}
         </p>
       </div>
@@ -125,19 +251,19 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
                 </p>
                 <p className="text-xs text-[#444444] mt-0.5 leading-relaxed">
                   Transfer{' '}
-                  <strong>{order ? formatPrice(order.total) : 'your total'}</strong> via{' '}
-                  {PAYMENT_LABELS[order?.paymentMethod ?? ''] ?? 'your chosen method'} and share the screenshot on WhatsApp (<strong>0324-8188616</strong>) with your order number.
+                  <strong>{view ? formatPrice(view.total) : 'your total'}</strong> via{' '}
+                  {PAYMENT_LABELS[view?.paymentMethod ?? ''] ?? 'your chosen method'} and share the screenshot on WhatsApp (<strong>0324-8188616</strong>) with your order number.
                 </p>
-                {order?.paymentMethod === 'bank-transfer' && (
+                {view?.paymentMethod === 'bank-transfer' && (
                   <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
                     <p className="font-bold text-[#111111]">Faysal Bank</p>
                     <p className="text-[#444444]">Title: <span className="font-semibold text-[#111111]">HASSAN RAZA</span></p>
                     <p className="font-mono text-[#111111] select-all">IBAN: PK05FAYS3605301000003020</p>
                   </div>
                 )}
-                {(order?.paymentMethod === 'easypaisa' || order?.paymentMethod === 'jazzcash') && (
+                {(view?.paymentMethod === 'easypaisa' || view?.paymentMethod === 'jazzcash') && (
                   <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
-                    <p className="font-bold text-[#111111]">{PAYMENT_LABELS[order.paymentMethod]}</p>
+                    <p className="font-bold text-[#111111]">{PAYMENT_LABELS[view.paymentMethod]}</p>
                     <p className="text-[#444444]">Title: <span className="font-semibold text-[#111111]">HASSAN RAZA</span></p>
                     <p className="font-mono text-[#111111] select-all">Account: 0324-8188616</p>
                   </div>
@@ -160,26 +286,26 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
         </div>
       </div>
 
-      {/* Order Summary (if we have it) */}
-      {order && (
+      {/* Order Summary (server-sourced when available) */}
+      {view && view.items.length > 0 && (
         <div className="bg-[#EDEBE8] rounded-[20px] p-5 sm:p-6 border border-[#E2E0DC] mb-6">
           <h2 className="text-sm font-extrabold text-[#111111] uppercase tracking-wider mb-4">
             Order Summary
           </h2>
 
           <div className="space-y-2 text-sm mb-4">
-            {order.items.map((item, idx) => (
+            {view.items.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[#111111] font-medium truncate">{item.product.name}</p>
+                  <p className="text-[#111111] font-medium truncate">{item.name}</p>
                   <p className="text-[10px] text-[#9A9A9A]">
-                    {item.selectedSize && `Size ${item.selectedSize} · `}
-                    {item.product.brand}
+                    {item.size && `Size ${item.size} · `}
+                    {item.brand}
                     {item.quantity > 1 ? ` · ×${item.quantity}` : ''}
                   </p>
                 </div>
                 <p className="font-semibold text-[#111111] shrink-0">
-                  {formatPrice(item.product.price * item.quantity)}
+                  {formatPrice(item.unitPrice * item.quantity)}
                 </p>
               </div>
             ))}
@@ -188,31 +314,39 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
           <div className="border-t border-[#E2E0DC] pt-3 space-y-1.5 text-sm">
             <div className="flex justify-between text-[#444444]">
               <span>Subtotal</span>
-              <span>{formatPrice(order.subtotal)}</span>
+              <span>{formatPrice(view.subtotal)}</span>
             </div>
             <div className="flex justify-between text-[#444444]">
               <span>Delivery</span>
-              <span>{formatPrice(order.deliveryFee)}</span>
+              <span>{formatPrice(view.deliveryFee)}</span>
             </div>
             <div className="flex justify-between font-extrabold text-[#111111] text-base pt-1">
               <span>Total</span>
-              <span>{formatPrice(order.total)}</span>
+              <span>{formatPrice(view.total)}</span>
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[#E2E0DC] grid grid-cols-2 gap-3 text-xs text-[#444444]">
-            <div>
-              <p className="font-bold text-[#111111] mb-0.5">Delivery To</p>
-              <p>{order.address}</p>
-              <p>{order.city}, {order.province}</p>
-            </div>
+          <div
+            className={
+              view.address
+                ? 'mt-4 pt-4 border-t border-[#E2E0DC] grid grid-cols-2 gap-3 text-xs text-[#444444]'
+                : 'mt-4 pt-4 border-t border-[#E2E0DC] grid grid-cols-1 gap-3 text-xs text-[#444444]'
+            }
+          >
+            {view.address && (
+              <div>
+                <p className="font-bold text-[#111111] mb-0.5">Delivery To</p>
+                <p>{view.address}</p>
+                <p>{view.city}, {view.province}</p>
+              </div>
+            )}
             <div>
               <p className="font-bold text-[#111111] mb-0.5">Payment</p>
-              <p>{PAYMENT_LABELS[order.paymentMethod] ?? order.paymentMethod}</p>
-              {order.notes && (
+              <p>{PAYMENT_LABELS[view.paymentMethod] ?? view.paymentMethod}</p>
+              {view.notes && (
                 <>
                   <p className="font-bold text-[#111111] mt-2 mb-0.5">Notes</p>
-                  <p className="italic">{order.notes}</p>
+                  <p className="italic">{view.notes}</p>
                 </>
               )}
             </div>

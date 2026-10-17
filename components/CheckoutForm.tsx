@@ -1,29 +1,41 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { ArrowRight, AlertCircle, ChevronDown } from 'lucide-react';
+import { ArrowRight, AlertCircle, ChevronDown, MessageCircle } from 'lucide-react';
 import { useCart } from '@/components/CartProvider';
 import { ProductImage } from '@/components/ProductImage';
 import { Badge } from '@/components/ui/Badge';
 import { formatPrice } from '@/lib/formatPrice';
-import type { Province, PaymentMethod } from '@/types';
+import {
+  PROVINCES,
+  isProvince,
+  isValidPakistaniPhone,
+  normalizePakistaniPhone,
+} from '@/lib/validation';
+import type { PaymentMethod } from '@/types';
 
-// ── Zod client schema (mirrors API) ──────────────────────────────────
+const IDEMPOTENCY_STORAGE_KEY = 'thriv_checkout_idem';
+const WHATSAPP_NUMBER = '923248188616';
+
+// ── Zod client schema (mirrors API; shared phone/province validators) ─
 const CheckoutSchema = z.object({
   customerName: z.string().min(2, 'Full name is required'),
   whatsapp: z
     .string()
-    .regex(
-      /^(\+92|0092|0)[0-9]{10}$/,
+    .refine(
+      isValidPakistaniPhone,
       'Enter a valid Pakistani number (e.g. 03001234567)'
     ),
   email: z.string().email('Enter a valid email address'),
   address: z.string().min(10, 'Enter your full street address'),
   city: z.string().min(2, 'Enter your city'),
-  province: z.string().min(1, 'Select a province'),
+  province: z
+    .string()
+    .min(1, 'Select a province')
+    .refine(isProvince, 'Select a valid province'),
   notes: z.string().optional(),
 });
 
@@ -39,14 +51,14 @@ type FormData = {
 
 type FormErrors = Partial<Record<keyof FormData, string>>;
 
-const PROVINCES: Province[] = [
-  'Punjab',
-  'Sindh',
-  'Khyber Pakhtunkhwa',
-  'Balochistan',
-  'Gilgit-Baltistan',
-  'Azad Jammu & Kashmir',
-  'Islamabad Capital Territory',
+// Focus order for the first invalid field (audit F-28).
+const FIELD_ORDER: (keyof FormData)[] = [
+  'customerName',
+  'whatsapp',
+  'email',
+  'address',
+  'city',
+  'province',
 ];
 
 const PAYMENT_METHODS: { id: PaymentMethod; label: string; note?: string }[] = [
@@ -57,14 +69,29 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string; note?: string }[] = [
   { id: 'card', label: 'Card (Coming Soon)', note: 'Card payments are not yet live. Please select another method.' },
 ];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function CheckoutForm() {
   const router = useRouter();
-  const { cart, subtotal, deliveryFee, total, clearCart } = useCart();
+  const { cart, isHydrated, subtotal, deliveryFee, total, clearCart } = useCart();
   const { items } = cart;
 
-  // Generated once on mount; prevents double-submit from creating two orders.
-  const [idempotencyKey] = useState<string>(() => crypto.randomUUID());
-  const isOrderPlacedRef = useRef(false);
+  // Generated once per checkout attempt, persisted in sessionStorage so a
+  // reload after a network failure reuses the same key (audit F-19) —
+  // resubmitting can never create a second order.
+  const [idempotencyKey] = useState<string>(() => {
+    if (typeof window === 'undefined') return crypto.randomUUID();
+    try {
+      const stored = sessionStorage.getItem(IDEMPOTENCY_STORAGE_KEY);
+      if (stored && UUID_RE.test(stored)) return stored;
+      const fresh = crypto.randomUUID();
+      sessionStorage.setItem(IDEMPOTENCY_STORAGE_KEY, fresh);
+      return fresh;
+    } catch {
+      return crypto.randomUUID();
+    }
+  });
+  const [orderPlaced, setOrderPlaced] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     customerName: '',
@@ -80,19 +107,42 @@ export function CheckoutForm() {
   const [agreedToFinalSale, setAgreedToFinalSale] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [checkoutUnavailable, setCheckoutUnavailable] = useState(false);
 
-  // Redirect to cart if cart is empty and order hasn't just been placed
+  // Redirect to cart if the cart is empty — but ONLY after hydration
+  // (audit F-07). Before hydration items.length === 0 is meaningless and
+  // bouncing early discards a filled form on refresh/deep-link.
   useEffect(() => {
-    if (!isOrderPlacedRef.current && items.length === 0) {
+    if (isHydrated && !orderPlaced && items.length === 0) {
       router.replace('/cart');
     }
-  }, [items.length, router]);
+  }, [isHydrated, orderPlaced, items.length, router]);
 
   const setField = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+  };
+
+  // Validate a single field on blur (audit F-28) and normalize phone
+  // formats people actually paste (audit F-29).
+  const handleBlur = (field: keyof FormData) => {
+    let value = formData[field];
+
+    if (field === 'whatsapp' && value.trim()) {
+      const normalized = normalizePakistaniPhone(value);
+      value = normalized;
+      if (normalized !== formData.whatsapp) {
+        setFormData((prev) => ({ ...prev, whatsapp: normalized }));
+      }
+    }
+
+    const result = CheckoutSchema.shape[field].safeParse(value);
+    setErrors((prev) => ({
+      ...prev,
+      [field]: result.success ? undefined : result.error.issues[0]?.message,
+    }));
   };
 
   const validate = (): boolean => {
@@ -106,6 +156,14 @@ export function CheckoutForm() {
         }
       });
       setErrors(fieldErrors);
+
+      // Move focus to the first invalid field (audit F-28).
+      const firstInvalid = FIELD_ORDER.find((f) => fieldErrors[f]);
+      if (firstInvalid) {
+        requestAnimationFrame(() => {
+          document.getElementById(firstInvalid)?.focus();
+        });
+      }
       return false;
     }
     return true;
@@ -114,6 +172,7 @@ export function CheckoutForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    setCheckoutUnavailable(false);
 
     if (!validate()) return;
 
@@ -130,12 +189,12 @@ export function CheckoutForm() {
     setIsSubmitting(true);
 
     try {
-      // Build the payload the new API expects.
-      // Client prices are intentionally excluded — server recomputes them.
+      // Build the payload the API expects.
+      // Client prices are intentionally excluded — the server recomputes them.
       const orderPayload = {
         idempotency_key:      idempotencyKey,
         customer_name:        formData.customerName,
-        customer_phone:       formData.whatsapp,
+        customer_phone:       normalizePakistaniPhone(formData.whatsapp),
         customer_email:       formData.email,
         address_line:         formData.address,
         city:                 formData.city,
@@ -156,7 +215,7 @@ export function CheckoutForm() {
         body: JSON.stringify(orderPayload),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         if (data.issues) {
@@ -167,12 +226,15 @@ export function CheckoutForm() {
           setErrors(serverErrors);
         }
         setSubmitError(data.error ?? 'Something went wrong. Please try again.');
+        setCheckoutUnavailable(
+          data.code === 'CHECKOUT_UNAVAILABLE' || response.status === 503
+        );
         setIsSubmitting(false);
         return;
       }
 
       const orderNumber: string = data.order_number;
-      isOrderPlacedRef.current = true;
+      setOrderPlaced(true);
 
       const orderData = {
         orderNumber,
@@ -188,11 +250,20 @@ export function CheckoutForm() {
         deliveryFee,
         total: data.total_pkr || total,
         createdAt: new Date().toISOString(),
+        // TTL marker: the confirmation page ignores snapshots older than 24h (audit F-58).
+        savedAt: new Date().toISOString(),
         notes: formData.notes || undefined,
       };
 
       try {
         localStorage.setItem(`thriv_order_${orderNumber}`, JSON.stringify(orderData));
+      } catch {
+        // non-fatal
+      }
+
+      // Next checkout attempt gets a fresh idempotency key.
+      try {
+        sessionStorage.removeItem(IDEMPOTENCY_STORAGE_KEY);
       } catch {
         // non-fatal
       }
@@ -205,8 +276,17 @@ export function CheckoutForm() {
     }
   };
 
+  // Wait for hydration before deciding anything about "empty" (audit F-07).
+  if (!isHydrated) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (items.length === 0) {
-    if (isOrderPlacedRef.current) {
+    if (orderPlaced) {
       return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
           <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
@@ -218,6 +298,7 @@ export function CheckoutForm() {
   }
 
   const showAccountDetails = ['bank-transfer', 'easypaisa', 'jazzcash'].includes(paymentMethod);
+  const hasFieldErrors = Object.values(errors).some(Boolean);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
@@ -231,6 +312,40 @@ export function CheckoutForm() {
       </nav>
 
       <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight mb-8">Checkout</h1>
+
+      {/* Error summary — role="alert" + placed above the fold (audit F-28) */}
+      {hasFieldErrors && (
+        <div role="alert" className="mb-6 p-3 bg-[#F5E6E6] border border-[#E2C2C2] rounded-[12px] flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-[#8B2020] shrink-0 mt-0.5" />
+          <p className="text-xs text-[#8B2020] font-medium leading-relaxed">
+            Please fix the highlighted fields below and try again.
+          </p>
+        </div>
+      )}
+
+      {/* Submit error — announced, with the WhatsApp fallback when checkout
+          is down (audit F-05/F-28) */}
+      {submitError && (
+        <div role="alert" className="mb-6 p-3 bg-[#F5E6E6] border border-[#E2C2C2] rounded-[12px] flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-[#8B2020] shrink-0 mt-0.5" />
+          <div className="space-y-2.5">
+            <p className="text-xs text-[#8B2020] font-medium leading-relaxed">{submitError}</p>
+            {checkoutUnavailable && (
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                  'Hi Thriv! Checkout on the website says it is temporarily unavailable. I would like to place my order on WhatsApp instead.'
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 bg-[#111111] text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-black transition-colors"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                Order on WhatsApp instead
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -250,6 +365,9 @@ export function CheckoutForm() {
                     type="text"
                     value={formData.customerName}
                     onChange={(e) => setField('customerName', e.target.value)}
+                    onBlur={() => handleBlur('customerName')}
+                    aria-invalid={!!errors.customerName}
+                    aria-describedby={errors.customerName ? 'customerName-error' : undefined}
                     placeholder="Ahmed Khan"
                     autoComplete="name"
                     className={inputClass(!!errors.customerName)}
@@ -261,8 +379,12 @@ export function CheckoutForm() {
                   <input
                     id="whatsapp"
                     type="tel"
+                    inputMode="tel"
                     value={formData.whatsapp}
                     onChange={(e) => setField('whatsapp', e.target.value)}
+                    onBlur={() => handleBlur('whatsapp')}
+                    aria-invalid={!!errors.whatsapp}
+                    aria-describedby={errors.whatsapp ? 'whatsapp-error' : undefined}
                     placeholder="03001234567"
                     autoComplete="tel"
                     className={inputClass(!!errors.whatsapp)}
@@ -276,6 +398,9 @@ export function CheckoutForm() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setField('email', e.target.value)}
+                    onBlur={() => handleBlur('email')}
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? 'email-error' : undefined}
                     placeholder="ahmed@example.com"
                     autoComplete="email"
                     className={inputClass(!!errors.email)}
@@ -288,6 +413,9 @@ export function CheckoutForm() {
                     id="address"
                     value={formData.address}
                     onChange={(e) => setField('address', e.target.value)}
+                    onBlur={() => handleBlur('address')}
+                    aria-invalid={!!errors.address}
+                    aria-describedby={errors.address ? 'address-error' : undefined}
                     placeholder="House no. / street / area / block..."
                     rows={2}
                     className={inputClass(!!errors.address) + ' resize-none'}
@@ -302,6 +430,9 @@ export function CheckoutForm() {
                       type="text"
                       value={formData.city}
                       onChange={(e) => setField('city', e.target.value)}
+                      onBlur={() => handleBlur('city')}
+                      aria-invalid={!!errors.city}
+                      aria-describedby={errors.city ? 'city-error' : undefined}
                       placeholder="Karachi"
                       autoComplete="address-level2"
                       className={inputClass(!!errors.city)}
@@ -314,6 +445,9 @@ export function CheckoutForm() {
                         id="province"
                         value={formData.province}
                         onChange={(e) => setField('province', e.target.value)}
+                        onBlur={() => handleBlur('province')}
+                        aria-invalid={!!errors.province}
+                        aria-describedby={errors.province ? 'province-error' : undefined}
                         className={inputClass(!!errors.province) + ' appearance-none pr-8 cursor-pointer'}
                       >
                         <option value="">Select province</option>
@@ -417,6 +551,7 @@ export function CheckoutForm() {
                   onChange={(e) => {
                     setAgreedToFinalSale(e.target.checked);
                     setSubmitError(null);
+                    setCheckoutUnavailable(false);
                   }}
                   className="mt-0.5 w-4 h-4 accent-[#8B2020] cursor-pointer shrink-0"
                 />
@@ -485,14 +620,6 @@ export function CheckoutForm() {
                 <span>{formatPrice(total)}</span>
               </div>
 
-              {/* Submit Error Banner */}
-              {submitError && (
-                <div className="mb-4 p-3 bg-[#F5E6E6] border border-[#E2C2C2] rounded-[12px] flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-[#8B2020] shrink-0 mt-0.5" />
-                  <p className="text-xs text-[#8B2020] font-medium leading-relaxed">{submitError}</p>
-                </div>
-              )}
-
               {/* Place Order CTA */}
               <button
                 type="submit"
@@ -558,7 +685,7 @@ function FieldGroup({
       </label>
       {children}
       {error && (
-        <p className="text-xs text-[#8B2020] mt-1 flex items-center gap-1">
+        <p id={`${id}-error`} role="alert" className="text-xs text-[#8B2020] mt-1 flex items-center gap-1">
           <AlertCircle className="w-3 h-3 shrink-0" />
           {error}
         </p>

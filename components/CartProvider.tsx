@@ -19,8 +19,11 @@ interface CartContextType {
   addItem: (product: Product, selectedSize?: string) => void;
   removeItem: (productId: string, selectedSize?: string) => void;
   updateQuantity: (productId: string, quantity: number, selectedSize?: string) => void;
+  changeSize: (productId: string, toSize: string, fromSize?: string) => void;
   clearCart: () => void;
   isInCart: (productId: string, selectedSize?: string) => boolean;
+  /** True once the localStorage cart has been read (audit F-07). */
+  isHydrated: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -74,6 +77,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'UPDATE_QUANTITY', productId, quantity, selectedSize });
   };
 
+  const changeSize = (productId: string, toSize: string, fromSize?: string) => {
+    dispatch({ type: 'CHANGE_SIZE', productId, fromSize, toSize });
+  };
+
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
   };
@@ -95,8 +102,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addItem,
         removeItem,
         updateQuantity,
+        changeSize,
         clearCart,
         isInCart,
+        isHydrated,
       }}
     >
       {children}
