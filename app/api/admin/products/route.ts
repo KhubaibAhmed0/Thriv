@@ -58,9 +58,11 @@ export async function POST(req: NextRequest) {
     const category = formData.get('category')?.toString().trim() || 'jeans';
     const subcategory = formData.get('subcategory')?.toString().trim() || '';
     const isFeatured = formData.get('isFeatured') === 'true';
-    const condition = formData.get('condition')?.toString().trim() || 'Premium';
-    const priceStr = formData.get('price')?.toString().trim();
     const isMerch = formData.get('isMerch') === 'true';
+    // Audit F-22: no fabricated defaults — grade, sizes and stock are exactly
+    // what the operator entered, or the request is rejected.
+    const condition = formData.get('condition')?.toString().trim() || '';
+    const priceStr = formData.get('price')?.toString().trim();
     const size = formData.get('size')?.toString().trim() || null;
     const sizesRaw = formData.get('sizes')?.toString().trim();
     const stockStr = formData.get('stock')?.toString().trim();
@@ -74,6 +76,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!isMerch && !condition) {
+      return NextResponse.json(
+        { error: 'Select a condition grade for this thrift piece.' },
+        { status: 400 }
+      );
+    }
+
     const price = parseInt(priceStr, 10);
     if (isNaN(price) || price < 0) {
       return NextResponse.json(
@@ -82,7 +91,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const stock = stockStr ? parseInt(stockStr, 10) : 1;
+    const stock = stockStr ? parseInt(stockStr, 10) : NaN;
     if (isNaN(stock) || stock < 0) {
       return NextResponse.json(
         { error: 'Stock must be a non-negative integer.' },
@@ -98,10 +107,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Strip blank values so the storefront never shows an empty measurement
+    // row; an all-blank object becomes null (audit F-22).
     let measurements: Record<string, unknown> | null = null;
     if (measurementsRaw) {
       try {
-        measurements = JSON.parse(measurementsRaw);
+        const parsed = JSON.parse(measurementsRaw) as Record<string, unknown>;
+        if (parsed && typeof parsed === 'object') {
+          const cleaned = Object.fromEntries(
+            Object.entries(parsed).filter(([, v]) => typeof v === 'string' && v.trim() !== '')
+          );
+          measurements = Object.keys(cleaned).length > 0 ? cleaned : null;
+        }
       } catch {
         measurements = null;
       }
@@ -114,6 +131,13 @@ export async function POST(req: NextRequest) {
       } catch {
         sizes = sizesRaw.split(',').map((s) => s.trim()).filter(Boolean);
       }
+    }
+
+    if (isMerch && (!sizes || sizes.length === 0)) {
+      return NextResponse.json(
+        { error: 'Select at least one available size for this merch item.' },
+        { status: 400 }
+      );
     }
 
     const serviceClient = getServiceClient();
@@ -164,11 +188,11 @@ export async function POST(req: NextRequest) {
         condition: isMerch ? null : condition,
         is_merch: isMerch,
         size: isMerch ? null : size,
-        sizes: isMerch ? (sizes && sizes.length > 0 ? sizes : ['S', 'M', 'L', 'XL']) : null,
         stock,
         images: imageUrls,
         description,
         measurements,
+        sizes: isMerch ? sizes : null,
         is_active: true,
       })
       .select()

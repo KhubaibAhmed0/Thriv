@@ -50,8 +50,8 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-black">
-      <div className="w-full max-w-sm bg-[#181818] border border-[#282828] rounded-[20px] p-6 sm:p-8 shadow-2xl">
+    <main data-admin className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-black">
+      <div className="w-full max-w-sm bg-admin-bg border border-admin-line rounded-[20px] p-6 sm:p-8 shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-[10px] bg-white flex items-center justify-center text-black shrink-0">
@@ -85,7 +85,7 @@ export default function AdminLoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               required
-              className="w-full bg-[#202020] border border-[#303030] rounded-[10px] px-3.5 py-2.5 text-sm text-white placeholder:text-neutral-500 outline-none focus:border-neutral-400 transition-colors"
+              className="w-full bg-admin-field border border-admin-line-strong rounded-[10px] px-3.5 py-2.5 text-sm text-white placeholder:text-neutral-400 outline-none focus:border-neutral-400 transition-colors"
             />
           </div>
 
@@ -101,7 +101,7 @@ export default function AdminLoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               required
-              className="w-full bg-[#202020] border border-[#303030] rounded-[10px] px-3.5 py-2.5 text-sm text-white placeholder:text-neutral-500 outline-none focus:border-neutral-400 transition-colors"
+              className="w-full bg-admin-field border border-admin-line-strong rounded-[10px] px-3.5 py-2.5 text-sm text-white placeholder:text-neutral-400 outline-none focus:border-neutral-400 transition-colors"
             />
           </div>
 
@@ -126,10 +126,10 @@ export default function AdminLoginPage() {
           </div>
         </form>
 
-        <p className="text-[11px] text-center text-neutral-500 mt-6">
+        <p className="text-[11px] text-center text-neutral-400 mt-6">
           Authorized personnel only. Access is monitored.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

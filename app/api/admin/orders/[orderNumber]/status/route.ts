@@ -10,6 +10,10 @@ const UpdateStatusSchema = z.object({
     .optional(),
   payment_status: z.enum(['unpaid', 'paid', 'refunded']).optional(),
   note: z.string().max(300).optional(),
+  // Audit F-79: dispatch details can be saved on their own or alongside a
+  // status change.
+  tracking_number: z.string().max(80).optional(),
+  courier: z.string().max(60).optional(),
 });
 
 export async function PATCH(
@@ -39,14 +43,19 @@ export async function PATCH(
       );
     }
 
-    const { status: rawStatus, payment_status, note } = parsed.data;
+    const { status: rawStatus, payment_status, note, tracking_number, courier } = parsed.data;
 
     // Normalize 'dispatched' to 'shipped' for database enum compatibility
     const status = rawStatus === 'dispatched' ? 'shipped' : rawStatus;
 
-    if (!status && !payment_status) {
+    if (
+      !status &&
+      !payment_status &&
+      tracking_number === undefined &&
+      courier === undefined
+    ) {
       return NextResponse.json(
-        { error: 'Provide either status or payment_status to update.' },
+        { error: 'Provide a status, a payment_status, or dispatch details to update.' },
         { status: 400 }
       );
     }
@@ -107,11 +116,36 @@ export async function PATCH(
       }
     }
 
+    // 4. Dispatch details (audit F-79): courier + tracking number are stored
+    //    independently of the fulfillment state so they can be corrected.
+    const dispatchUpdates: Record<string, unknown> = {};
+    if (tracking_number !== undefined) {
+      dispatchUpdates.tracking_number = tracking_number.trim() || null;
+    }
+    if (courier !== undefined) {
+      dispatchUpdates.courier = courier.trim() || null;
+    }
+    if (Object.keys(dispatchUpdates).length > 0) {
+      const { error: dispatchError } = await supabase
+        .from('orders')
+        .update(dispatchUpdates)
+        .eq('id', currentOrder.id);
+
+      if (dispatchError) {
+        console.error('[/api/admin/orders/.../status] Dispatch update failed:', dispatchError);
+        return NextResponse.json({ error: dispatchError.message }, { status: 500 });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       order_number: orderNumber,
       status: status || currentOrder.status,
       payment_status: payment_status || currentOrder.payment_status,
+      ...(tracking_number !== undefined
+        ? { tracking_number: dispatchUpdates.tracking_number }
+        : {}),
+      ...(courier !== undefined ? { courier: dispatchUpdates.courier } : {}),
     });
   } catch (err) {
     console.error('[/api/admin/orders/.../status] Error:', err);

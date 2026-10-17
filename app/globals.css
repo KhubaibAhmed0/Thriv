@@ -26,6 +26,14 @@
   --color-badge-verygood-bg: #EAF0EA;
   --color-badge-verygood-text: #2E5E2E;
 
+  /* Admin dark surfaces — audit F-68: the former hand-tuned #141414–#333333
+     hex mesh, consolidated into five roles. */
+  --color-admin-bg:          #161616;  /* page base, sticky bars, cards */
+  --color-admin-field:       #202020;  /* inputs, chips, raised surfaces */
+  --color-admin-raised:      #242424;  /* hover states + hairline borders */
+  --color-admin-line:        #2a2a2a;  /* soft borders */
+  --color-admin-line-strong: #303030;  /* visible borders */
+
   /* Border radius */
   --radius-hero:   20px;
   --radius-card:   16px;
@@ -88,6 +96,16 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-black);
   outline-offset: 2px;
+}
+
+/* Admin screens are dark surfaces: the black ring above is invisible there
+   (audit F-32). Every admin page root carries data-admin. */
+[data-admin] {
+  color-scheme: dark;
+}
+[data-admin]:focus-visible,
+[data-admin] :focus-visible {
+  outline-color: #ffffff;
 }
 
 /* Respect reduced-motion preference (audit F-31): collapse animations,
