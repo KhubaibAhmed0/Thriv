@@ -342,6 +342,70 @@ Operational notes:
 
 ---
 
-## Batch B5 (part b) — pending
+## Batch B5 (part b) — Admin UX & polish
 
-Admin UX/polish, second deploy cycle of B5: F-22 (form defaults + server validation), F-32, F-34/F-67 (admin dropdown), F-35–F-39, F-68 (admin dark shades), F-73 (admin targets), F-77, F-78, F-79 (admin tracking input), F-81, F-86 (admin bits + payment/currency drift). Then B6 hardening (F-48 already closed in B3). Each gets the same evidence format in this log.
+**Findings closed in this deploy:** F-22 *(form + server half)*, F-32, F-34 / F-67 *(admin half)*, F-35, F-36, F-37, F-38, F-39, F-68 *(admin dark scale)*, F-73 *(admin half)*, F-77, F-78, F-79 *(admin input half)*, F-81, F-86 *(admin bits + payment/currency drift)*
+**Branch:** `fix/b5b-admin-ux`
+
+### What was wrong
+
+| Finding | Problem |
+| :--- | :--- |
+| F-22 | Add-product form fabricated values (brand "Zara", grade "Premium", sizes S/M/L/XL pre-selected, measurements prefilled, stock "5"); the API silently re-defaulted anything missing. |
+| F-32 | No visible focus indicator anywhere in the admin — keyboard use was effectively blind. |
+| F-34 / F-67 | Admin dropdowns were the third competing pattern, unstyled natives mixed with custom markup and no `aria-invalid` wiring. |
+| F-35 | Admin form fields had no label/`for`/`id` associations — screen readers announced unlabeled inputs; icon buttons had no names. |
+| F-36 | Submitting an invalid product gave one banner (or nothing) — no per-field message, no error summary, no focus management. |
+| F-37 | Admin header jammed brand + tabs + actions into one row on phones (overlap ≈ 375px). |
+| F-38 | Order detail had its own ad-hoc header — inconsistent with the shared admin nav, no tab context. |
+| F-39 | Products could only be created and (mis-)toggled — no way to edit name, brand, grade, or price after creation. |
+| F-68 | Admin dark theme was ~40 hand-tuned hexes (`#1a1a1a`…#3a3a3a`) with no shared scale. |
+| F-73 | Admin action buttons were ~30px, size steppers 28px, refresh/sign-out ~32px. |
+| F-77 | Destructive actions used raw `alert()` / `window.confirm()`. |
+| F-78 | Fulfilment was a soup of status buttons with no next-step clarity and no confirmation on irreversible delivery. |
+| F-79 | The public tracking field shipped in part a had no admin input. |
+| F-81 | `text-neutral-500` on near-black = ≈3.3:1; placeholder/empty-state text illegible. |
+| F-86 | Payment card copy/format drift (`Rs` spacing), dead `animate-in`-style classes, misc admin leftovers. |
+
+### Changes
+
+- **Token scale (F-68/F-81)** — five-tone admin palette in `app/globals.css` `@theme`: `admin-bg #161616`, `admin-field #202020`, `admin-raised #242424`, `admin-line #2a2a2a`, `admin-line-strong #303030`; context-aware script (`b5b_tokenize.py`) rewrote every remaining stray shade (79 replacements this pass after the hand refactors); final scan leaves **only 3 hex literals** in `components/admin/*` — all `dotColor` JS palette values, not classes. `text-neutral-500` → `400` throughout the admin (empty states, placeholders, meta rows).
+- **Focus ring (F-32)** — `[data-admin]:focus-visible, [data-admin] :focus-visible { outline-color: #ffffff }` + `color-scheme: dark`; `data-admin` attribute added to every admin page/client root (orders, inventory, detail, new-product, login).
+- **Dropdowns (F-34/F-67)** — `AdminDropdown` rewritten as a styled native `<select>` with `id`, `invalid`, `describedBy` props (mirrors the part-a storefront pattern); placeholder options render "Select brand" / "Select grade" with `value=""`.
+- **Labels + error UX (F-35/F-36)** — `id`/`htmlFor`/`aria-invalid`/`aria-describedby` on every field (including all four measurement inputs); submitting an invalid form now renders an `role="alert"` summary ("N fields need attention") plus per-field messages, moves focus to the first invalid control, and `noValidate` on the form so the in-page system (not native bubbles) owns messaging.
+- **Edit product (F-39)** — new `EditItemModal` (name, brand, grade, price, stock, subcategory, featured) on every inventory card; `PATCH /api/admin/products/[id]` extended with a whitelist: non-empty name, brand/condition strings, positive-integer price, stock, subcategory, `is_featured`.
+- **Fulfilment rebuild (F-78/F-79)** — single primary next-action button (`new → Confirm Order`, `confirmed → Mark Shipped`, `shipped → Mark Delivered`), a 3-step stepper, "More actions" disclosure (skip-to-shipped for new orders, Cancel Order with confirm dialog), delivery gated behind a confirm dialog; new **Dispatch Details** card (courier + tracking number, hidden for new/cancelled orders) saved through the status route (both fields ≤80/≤60 chars, `null` when cleared, response echoes them).
+- **Feedback primitives (F-77)** — `components/admin/AdminFeedback.tsx`: `AdminToast` (`role="status"`, 4s auto-dismiss) and `ConfirmDialog` (`role="dialog"`, `aria-modal`, Escape + backdrop close, focus lands on the confirm button, destructive variant); every `alert()`/`window.confirm()` replaced.
+- **Layout & targets (F-37/F-73/F-38)** — admin header is now two rows below `sm` (brand/actions, then full-width tabs; 118px tall at 375px, no horizontal overflow); refresh + sign-out are 44px, inventory action buttons 44→, size steppers `w-11 h-11`, photo-remove 36px secondary. Order detail uses the shared `AdminNavHeader`.
+- **Truthful defaults (F-22)** — client no longer sends fabricated brand/grade/sizes/measurements/stock; server rejects thrift without a grade, merch without sizes, and any product without stock; sizes are stored exactly as selected (`null` for non-merch), blank measurements are stripped (all-blank → `null`).
+- **Polish (F-86)** — payment card copy/format aligned, dead `animate-in zoom-in-95`-style classes removed sitewide (repo-wide scan = 0), `scrollbar-none` → `no-scrollbar`, login page got its own metadata (`Admin Sign In | Thriv`) via `app/admin/login/layout.tsx` and a `<main>` landmark, toast/notification dismiss got a name + 36px target.
+
+### Verification
+
+| Check | Result |
+| :--- | :--- |
+| `npx tsc --noEmit` / `npx eslint` / `npm run build` | ✓ all clean |
+| B5b admin battery (new, local) | ✓ **15/15** — condition/sizes/stock 400s, exact sizes stored, blank measurements dropped, PATCH name+condition round-trip + invalid price 400, dispatch round-trip + restore, empty-body 400, unauth 401 |
+| B4 admin battery (local) | ✓ **11/11** |
+| B5 route probes (local) | ✓ **32/32** |
+| B3 regression battery (local) | ✓ **12/12** |
+| Lighthouse (local Chromium) | ✓ `/admin` **100/100/100**, `/admin/products` **100/100/100**, order detail **100/100/100**, `/admin/login` **100/100/100** — first passes caught real issues, all fixed before deploy: stock-badge white-on-emerald 2.93:1 → dark chips (≈9:1), inventory h3-without-h2 → sr-only "All items" h2, hidden-card `opacity-60` meta text 3.25:1 → overlay-only dimming, login page missing `<main>` |
+| Browser (local, real Chromium) | ✓ F-37: nav wraps to its own full-width row at 375px (`nav width 328px`, header 118px, no h-overflow); F-32 rule live (`outline-color: rgb(255,255,255)`, `color-scheme: dark`); 44×44 action/refresh/sign-out + size steppers with `aria-pressed` toggle; F-22 defaults all blank with "Select brand"/"Select grade" placeholders; F-36 empty submit → "5 fields need attention" alert + 4 field errors + `aria-invalid` + focus on `product-photos`, no navigation; F-39 edit round-trip (open modal → save → "Item updated" toast → row updates → revert); F-77 confirm dialog focus + Escape + backdrop; F-78 `new` order: primary "Confirm Order" + More actions ("Mark Shipped (skip)", "Cancel Order") + no dispatch card; delivered order: full stepper + completed note + dispatch card; F-79 dispatch round-trip verified end-to-end |
+
+### Deploy verification (2026-10-17)
+
+**Preview** — commit `3fe1fe4` deployed READY (`thriv-b4jun0cdf-…vercel.app`); previews remain behind Vercel Authentication, so mechanics only.
+
+**Production** — merge commit `628a9f8`, deployment READY (`thriv-3cflnwtgr-…vercel.app`). Against `thriv-five.vercel.app`:
+- B5 route probes: **32/32**.
+- B3 regression battery: **12/12**.
+- Admin API battery: **11/11**.
+- New B5b admin battery: **15/15** — validation rejections, exact-size storage, edit whitelist, dispatch round-trip (written, verified, restored), auth guards.
+
+> Flagged for the owner (non-automatable): nothing new in this batch. The standing items from earlier batches remain: **attach a custom domain** (set `NEXT_PUBLIC_SITE_URL` when done), **real product photos** (upload via admin → Edit; the storefront shows "Photo coming soon" until then), **real Instagram post URLs**, and a final **copy/tone** pass.
+
+---
+
+## Batch B6 — pending
+
+Hardening pass. F-48 was already closed in B3's Zod cap. Each gets the same evidence format in this log.
