@@ -406,6 +406,66 @@ Operational notes:
 
 ---
 
-## Batch B6 — pending
+## Batch B6 — Security & resilience hardening
 
-Hardening pass. F-48 was already closed in B3's Zod cap. Each gets the same evidence format in this log.
+**Findings closed in this deploy:** F-41, F-44 *(throttle half; MFA enrollment is an owner step — flagged below)*, F-45, F-46, F-47, F-49, F-50, F-51, F-52, F-53, F-55, F-56, F-57, F-82, F-83
+**Branch:** `fix/b6-hardening` (+ follow-up commit `350f8da`)
+
+### What was wrong
+
+| Finding | Problem |
+| :--- | :--- |
+| F-41 | Checkout/admin routes returned raw Postgres error text and classified by substring match (`msg.includes('Only ')`) — anonymous callers got schema disclosure. |
+| F-44 | No login throttling/lockout: the admin password was the whole security model, brute-forceable at full speed. |
+| F-45 | No security headers at all — `/admin/login` was framable (clickjacking), no CSP containment, `X-Powered-By` on. |
+| F-46 | No security-event logging: failed logins silent, admin mutations unaudited — no trace if the B1 holes had been exploited. |
+| F-47 | Logout only cleared the cookie; a copied token stayed valid until expiry. |
+| F-49 | Admin product endpoints skipped validation — free text hit typed columns (`22P02` → 500), `category` unconstrained. |
+| F-50 | Check-then-insert idempotency with no `unique_violation` handler (concurrent retries → raw 500 or duplicates), key regenerated per mount, replay echoed the order number. |
+| F-51 | `is_admin()` (backs RLS and storage policies) ran `SECURITY DEFINER` without a pinned `search_path`. |
+| F-52 | Deleting a product orphaned its photos in the bucket; storage grants were blanket and the bucket was listable with any anon key. |
+| F-53 | Upload failures swallowed (product created with missing photos while the admin saw success); no server-side size/type gate. |
+| F-55 | Three indexes duplicating UNIQUE constraints, two with no consumer; the hot storefront query `(is_active, created_at desc)` unindexed. |
+| F-56 | Migrations claimed "safe to re-run" but the Realtime `ADD TABLE` errors on a second run. |
+| F-57 | Realtime toast had no `role="status"` and rows hardcoded `item_count: 1`; Realtime had no remaining consumer once the admin moved to polling. |
+| F-82 | Weak, shadownable cookie name; `**.supabase.co` image allowlist (any project's storage); attacker-controlled text interpolated into emails. |
+| F-83 | No `updated_at` on products/orders; admin list endpoints fetched all rows unbounded. |
+
+### Changes
+
+- **Migration `20261017_b6_hardening.sql`** (applied to the live DB before deploy — additive and backward compatible with the running build, verified; re-runnable — proven by a full re-apply): `admin_login_attempts` + RLS; `is_admin()` search_path pinned; **`place_order` v4** — TH001–TH007 SQLSTATEs, replay reduced to `{idempotent:true}`, race-safe via per-slug lock + in-lock replay recheck + `unique_violation` handler; `updated_at` columns + `set_updated_at()` triggers on products/orders; `products_category_check`; six redundant indexes dropped + `idx_products_active_created` added; storage policies dropped; `orders` removed from `supabase_realtime`; the initial-schema publication statement wrapped for true idempotency (F-56).
+- **Checkout errors (F-41)** — `lib/order-errors.ts` maps SQLSTATE → fixed `{status, code, message}`; unrecognised errors become a generic 500 with the WhatsApp fallback; raw detail goes to server logs only.
+- **Login throttle + audit trail (F-44/F-46)** — `lib/admin-login-throttle.ts`: 5 failures / 15 min per email+IP → `429` + `Retry-After`, a successful login clears the counter; `lib/security-log.ts`: one-line structured JSON events (`auth.login.success/failure/blocked/denied`, `auth.logout`, `admin.product.create/update/delete`, `admin.product.upload_rejected`, `order.replay`, `auth.denied`).
+- **Headers (F-45)** — CSP (`default-src 'self'`; script-src pinned to self + Next's inline bootstrap; img/connect limited to the project's Supabase host), `X-Frame-Options: SAMEORIGIN` + `frame-ancestors 'self'` (same-origin embedding tooling intentionally kept working; cross-origin framing blocked), `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS; `poweredByHeader: false`.
+- **Session lifecycle (F-47/F-82)** — cookie renamed to **`__Host-thriv_admin_token`** (Secure, HttpOnly, Path=/, no Domain, `Max-Age` = the token's real `expires_in` ≈ 3600 s — no 7-day fallback); logout revokes the Supabase session server-side (`signOut(token, 'global')`) and reports `revoked: true`.
+- **Admin validation (F-49)** — `lib/admin-product-schema.ts` Zod: category/condition/size unions, 1-of-1 thrift stock, price/stock bounds; 400 with field errors; PATCH whitelist. The DB `CHECK` backstops `category` independently.
+- **Upload gate (F-53)** — size (4 MB combined — deliberately under Vercel's 4.5 MB request-body cap), MIME allowlist and **magic-byte** checks server-side; a failed upload aborts and removes anything already uploaded; the product row is written only after all photos land; the form mirrors the same gate client-side.
+- **Replay UX (F-50)** — the idempotency key is persisted in `sessionStorage` (stable across reload retries, cleared on success); server replay returns only `{idempotent:true}`; the form shows an "order already submitted" panel instead of duplicating.
+- **Storage (F-52)** — product delete now removes its bucket objects (reported as `storage.removed`); storage policies dropped. **Honest note:** `REVOKE` on `storage.objects`/`buckets` is a no-op — those grants belong to `supabase_storage_admin` (platform-managed; 16 survive). Denial is enforced by RLS with zero policies, verified live: anon bucket list returns `[]`, uploads are denied, and public URL serving is unaffected. A deleted object may briefly resolve from Supabase's CDN cache — deletion is verified against the bucket listing, not the URL.
+- **Scale hygiene (F-55/F-83)** — redundant indexes dropped, `(is_active, created_at desc)` added; `updated_at` columns/triggers; admin orders/products GETs gained `limit`/`offset`/`total`/`has_more` (defaults keep the UI unchanged).
+- **Misc (F-57/F-82)** — Realtime toast replaced by polling with `role="status"`; the Supabase image host is derived from `NEXT_PUBLIC_SUPABASE_URL` and pinned exactly; email lines are sanitized against newline/control-char injection. **Kept deliberately:** the `THR-` sequential order-number format (documented, owner-facing; unchanged this pass).
+
+### Verification
+
+| Check | Result |
+| :--- | :--- |
+| `npm run typecheck` / `lint` / `build` | ✓ all clean |
+| B6 migration battery (new) | ✓ **48/48** across dry-run → committed → re-apply (idempotency proven twice) |
+| B6 DB battery (new) | ✓ **29/29** — replay minimality (rolled-back tx leaves no rows), **two-connection race**: concurrent retry returns exactly `{idempotent:true}`, exactly one order exists, test row cleaned up; TH001–TH007 probes; `updated_at` trigger fires; category CHECK rejects; storage RLS effective |
+| B6 HTTP battery (new, local) | ✓ **55/55** — headers/CSP, `__Host-` cookie attributes (Secure, HttpOnly, Path=/, no Domain, Max-Age=3600), pagination + `updated_at`, Zod 400s, upload gate (fake / oversize / 9 photos / combined > 4 MB), create → serve → `/next/image` → delete → bucket-empty, SQLSTATE 409s with no DB leak, throttle 5×401 → 429 + `Retry-After`, logout `revoked:true` |
+| Browser (local, real Chromium) | ✓ storefront hydrates under the CSP (0 console errors); add-to-cart increments the badge (2 → 3, reverted after); admin **form login on `http://localhost`** → dashboard (the `__Host-` cookie is accepted on localhost); `/me` authenticated; token **invisible to JS** (HttpOnly); Sign Out → back to login, `/me` 401 |
+| Security-log evidence | ✓ 13 structured events captured in the server log (upload rejections, create/delete, login failure ×5 / blocked / success, logout) |
+
+### Deploy verification (2026-10-17)
+
+**Preview** — commit `ae1b192` deployed READY; follow-up `350f8da` deployed READY. Previews remain behind Vercel Authentication (probes hit the SSO wall — mechanics only).
+
+**Production** — merge commits `50e1673` and `2fd214a`, deployments READY. Against `thriv-five.vercel.app`:
+- B6 HTTP battery: **56/56**. The first production run (53/54) caught a real platform interaction worth noting: Vercel rejects request bodies over 4.5 MB with its own **413 before the route can answer**, so a gate advertising "5 MB allowed" promised more than the platform honors. Limits were re-aligned to **4 MB combined** (client + server, with a clear `400` / `PAYLOAD_TOO_LARGE` instead of a bare 413) and redeployed as `2fd214a`; the prod re-run is fully green.
+- Final sweep: **zero** `b6-test` products or storage objects left in the DB/bucket.
+- Prod browser smoke: `/shop` hydrates with **0 console errors** under the live CSP; 29 add-to-cart buttons interactive.
+
+> **Flagged for the owner (non-automatable):**
+> - **MFA enrollment** for the admin account (F-44 remainder): Supabase dashboard → Authentication → Users → enroll TOTP. The throttle now limits brute force; MFA removes the password-only failure mode.
+> - Uploads are capped at **4 MB combined per product** because of the Vercel request-body limit; if full-size camera photos are needed later, the path forward is client-side compression or direct-to-storage signed uploads.
+> - Standing items from earlier batches: **attach the custom domain** (+ set `NEXT_PUBLIC_SITE_URL`), **real product photos**, **real Instagram post URLs**, and a final **copy/tone** pass.
