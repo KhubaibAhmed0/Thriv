@@ -28,7 +28,9 @@ export function BrowseShopSection({ products: initialProducts, featuredMerch: in
     fetch('/api/products')
       .then((r) => r.json())
       .then((data) => {
-        if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+        // Accept empty results too — the API is now the source of truth
+        // (audit F-13); never fall back to stale static seed products.
+        if (Array.isArray(data.products)) {
           setProducts(data.products);
         }
       })

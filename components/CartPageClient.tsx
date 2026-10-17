@@ -9,8 +9,18 @@ import { Badge } from '@/components/ui/Badge';
 import { formatPrice } from '@/lib/formatPrice';
 
 export function CartPageClient() {
-  const { cart, removeItem, updateQuantity, subtotal, deliveryFee, total } = useCart();
+  const { cart, removeItem, updateQuantity, changeSize, subtotal, deliveryFee, total, isHydrated } = useCart();
   const { items } = cart;
+
+  // Wait for the localStorage cart to load before deciding it is empty —
+  // otherwise a refresh flashes "your cart is empty" (audit F-07).
+  if (!isHydrated) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -58,7 +68,6 @@ export function CartPageClient() {
         {/* ── Left: Cart Line Items ── */}
         <div className="lg:col-span-7 space-y-3">
           {items.map((item) => {
-            const isSoldOut = item.product.stock <= 0;
             const isThrift = !item.product.isMerch;
 
             return (
@@ -107,12 +116,40 @@ export function CartPageClient() {
                   {/* Condition + Size meta */}
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <Badge variant="condition" label={item.product.condition} />
-                    {item.selectedSize && (
+                    {item.selectedSize && (isThrift || (item.product.sizes?.length ?? 0) <= 1) && (
                       <span className="text-[10px] font-semibold text-[#444444] bg-white border border-[#E2E0DC] px-2 py-0.5 rounded-full">
                         Size: {item.selectedSize}
                       </span>
                     )}
                   </div>
+
+                  {/* Size change for multi-size merch (audit F-20) */}
+                  {!isThrift && (item.product.sizes?.length ?? 0) > 1 && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#9A9A9A]">
+                        Size:
+                      </span>
+                      {item.product.sizes!.map((sz) => {
+                        const isCurrent = sz === item.selectedSize;
+                        return (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => !isCurrent && changeSize(item.product.id, sz, item.selectedSize)}
+                            aria-pressed={isCurrent}
+                            className={[
+                              'min-w-7 h-7 px-2 rounded-full text-[11px] font-bold border transition-colors cursor-pointer',
+                              isCurrent
+                                ? 'bg-[#111111] text-white border-[#111111]'
+                                : 'bg-white text-[#444444] border-[#E2E0DC] hover:border-[#111111]',
+                            ].join(' ')}
+                          >
+                            {sz}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Quantity row */}
                   <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[#E2E0DC]/60">

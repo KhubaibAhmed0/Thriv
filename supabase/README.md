@@ -9,6 +9,9 @@ The **authoritative** database definition for this project lives in `migrations/
    #2 (per-slug stock aggregation), adds `update_order_status()` (the only writer of
    order status changes, incl. cancel stock restore) and the
    `products_thrift_one_of_one` CHECK for thrift pieces.
+5. `20261017_b3_place_order_v3.sql` — supersedes the `place_order` definition from
+   #4: validates `selected_size` against `products.sizes` on every line (the
+   storefront quick-add used to hardcode size "L").
 
 Apply them in filename order (Supabase SQL editor, or any Postgres client connected
 as the `postgres` role).

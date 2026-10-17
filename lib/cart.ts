@@ -91,6 +91,44 @@ export function cartReducer(state: Cart, action: CartAction): Cart {
       };
     }
 
+    case 'CHANGE_SIZE': {
+      const { productId, fromSize, toSize } = action;
+
+      const sourceIndex = state.items.findIndex(
+        (item) =>
+          item.product.id === productId &&
+          item.product.isMerch &&
+          (fromSize === undefined || item.selectedSize === fromSize)
+      );
+      if (sourceIndex === -1) return state;
+
+      const source = state.items[sourceIndex];
+      if (source.selectedSize === toSize) return state;
+
+      // Merge with an existing line for the same product+size
+      const targetIndex = state.items.findIndex(
+        (item, i) =>
+          i !== sourceIndex &&
+          item.product.id === productId &&
+          item.selectedSize === toSize
+      );
+
+      if (targetIndex > -1) {
+        const merged = [...state.items];
+        const target = merged[targetIndex];
+        merged[targetIndex] = {
+          ...target,
+          quantity: Math.min(target.quantity + source.quantity, source.product.stock),
+        };
+        merged.splice(sourceIndex, 1);
+        return { ...state, items: merged };
+      }
+
+      const updated = [...state.items];
+      updated[sourceIndex] = { ...source, selectedSize: toSize };
+      return { ...state, items: updated };
+    }
+
     case 'CLEAR_CART': {
       return { items: [] };
     }

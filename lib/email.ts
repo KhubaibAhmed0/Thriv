@@ -74,6 +74,8 @@ https://thriv-five.vercel.app
         subject: `Order Confirmation: ${params.orderNumber}`,
         text: textBody,
       }),
+      // Never let a stalled email provider hold the request open (F-19).
+      signal: AbortSignal.timeout(5000),
     });
 
     const resData = await res.json().catch(() => ({}));

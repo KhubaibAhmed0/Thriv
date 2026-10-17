@@ -2,79 +2,121 @@ import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { products as staticProducts } from '@/data/products';
 import type { Product } from '@/types';
 
-export async function getAllProducts(): Promise<Product[]> {
-  if (isServiceConfigured()) {
-    try {
-      const client = getServiceClient();
-      const { data, error } = await client
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+/**
+ * Product data source (audit F-13 / F-18).
+ *
+ * - Unconfigured Supabase (local dev / demo checkout-less runs): the static
+ *   seed array is served so the site still renders.
+ * - Configured Supabase: the DATABASE is the single source of truth. An
+ *   error or an empty result returns an empty catalogue instead of silently
+ *   shadowing the failing/empty DB with phantom seed products — phantom
+ *   items lead customers into a checkout that cannot fulfil them. Failures
+ *   are logged as the operator signal.
+ */
 
-      if (!error && data && data.length > 0) {
-        return data
-          .filter((row: any) => row.slug !== 'bershka-washed-black-balloon-jeans')
-          .map((row: any): Product => ({
-            id: row.id,
-            slug: row.slug,
-            name: row.name,
-            brand: row.brand,
-            category: row.category,
-            subcategory: row.subcategory || (row.category === 'jeans' ? 'straight-leg' : 'anime-tees'),
-            price: row.price_pkr,
-            condition: row.condition || 'Premium',
-            isMerch: row.is_merch || false,
-            size: row.size,
-            sizes: row.sizes,
-            stock: row.stock,
-            images: row.images || [],
-            description: row.description,
-            measurements: row.measurements || {},
-            isFeatured: row.is_featured || false,
-          }));
-      }
-    } catch (e) {
-      console.warn('[getAllProducts] Supabase fetch fallback to static:', e);
-    }
+// Legacy row excluded while it still exists in the DB (removed in B4 / F-15).
+const LEGACY_HIDDEN_SLUG = 'bershka-washed-black-balloon-jeans';
+
+interface ProductRow {
+  id: string;
+  slug: string;
+  name: string;
+  brand: Product['brand'];
+  category: Product['category'];
+  subcategory: string | null;
+  price_pkr: number;
+  condition: string | null;
+  is_merch: boolean | null;
+  size: string | null;
+  sizes: string[] | null;
+  stock: number;
+  images: string[] | null;
+  description: string;
+  measurements: Record<string, string> | null;
+  is_featured: boolean | null;
+}
+
+function mapRow(row: ProductRow): Product {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    brand: row.brand,
+    category: row.category,
+    subcategory: row.subcategory || (row.category === 'jeans' ? 'straight-leg' : 'anime-tees'),
+    price: row.price_pkr,
+    condition: (row.condition || 'Premium') as Product['condition'],
+    isMerch: row.is_merch || false,
+    size: row.size,
+    sizes: row.sizes,
+    stock: row.stock,
+    images: row.images || [],
+    description: row.description,
+    measurements: row.measurements || {},
+    isFeatured: row.is_featured || false,
+  };
+}
+
+export async function getAllProducts(): Promise<Product[]> {
+  if (!isServiceConfigured()) {
+    return staticProducts;
   }
-  return staticProducts;
+
+  try {
+    const client = getServiceClient();
+    const { data, error } = await client
+      .from('products')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(
+        '[getAllProducts] Supabase error — returning empty catalogue (DB is the source of truth):',
+        error.message
+      );
+      return [];
+    }
+
+    return (data ?? [])
+      .filter((row: ProductRow) => row.slug !== LEGACY_HIDDEN_SLUG)
+      .map(mapRow);
+  } catch (e) {
+    console.error(
+      '[getAllProducts] Supabase fetch failed — returning empty catalogue:',
+      e
+    );
+    return [];
+  }
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  if (slug === 'bershka-washed-black-balloon-jeans') return null;
-  if (isServiceConfigured()) {
-    try {
-      const client = getServiceClient();
-      const { data, error } = await client
-        .from('products')
-        .select('*')
-        .eq('slug', slug)
-        .maybeSingle();
+  if (slug === LEGACY_HIDDEN_SLUG) return null;
 
-      if (!error && data) {
-        return {
-          id: data.id,
-          slug: data.slug,
-          name: data.name,
-          brand: data.brand,
-          category: data.category,
-          subcategory: data.subcategory || (data.category === 'jeans' ? 'straight-leg' : 'anime-tees'),
-          price: data.price_pkr,
-          condition: data.condition || 'Premium',
-          isMerch: data.is_merch || false,
-          size: data.size,
-          sizes: data.sizes,
-          stock: data.stock,
-          images: data.images || [],
-          description: data.description,
-          measurements: data.measurements || {},
-          isFeatured: data.is_featured || false,
-        };
-      }
-    } catch (e) {
-      console.warn('[getProductBySlug] Supabase fetch fallback to static:', e);
-    }
+  if (!isServiceConfigured()) {
+    return staticProducts.find((p) => p.slug === slug) || null;
   }
-  return staticProducts.find((p) => p.slug === slug) || null;
+
+  try {
+    const client = getServiceClient();
+    const { data, error } = await client
+      .from('products')
+      .select('*')
+      .eq('slug', slug)
+      .eq('is_active', true) // audit F-18: hidden products are not viewable
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        '[getProductBySlug] Supabase error — treating as not found:',
+        error.message
+      );
+      return null;
+    }
+
+    return data ? mapRow(data) : null;
+  } catch (e) {
+    console.error('[getProductBySlug] Supabase fetch failed — treating as not found:', e);
+    return null;
+  }
 }
