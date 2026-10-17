@@ -1,28 +1,42 @@
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { getSupabasePublicEnv } from '@/lib/supabase-env';
 
-export async function verifyAdminRequest(req: NextRequest): Promise<{
-  authorized: boolean;
-  user?: { id: string; email?: string };
-}> {
-  const token =
-    req.cookies.get('thriv_admin_token')?.value ||
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+export interface AdminUser {
+  id: string;
+  email?: string;
+}
 
-  if (!token) {
+/**
+ * Verifies that a Supabase access token belongs to a registered admin.
+ *
+ * FAILS CLOSED (audit F-01 / F-08): if required config is missing, or the
+ * `public.admins` membership check cannot be performed, access is denied.
+ * There is no "allow when unconfigured" branch — the previous dev-admin
+ * fallback let anyone with any token read and mutate every order whenever
+ * the NEXT_PUBLIC_* env vars were unset.
+ */
+export async function verifyAdminToken(
+  token: string | null | undefined
+): Promise<{ authorized: boolean; user?: AdminUser }> {
+  if (!token || !token.trim()) {
     return { authorized: false };
   }
 
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  const supabaseUrl = rawUrl?.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
-  const anonKey = rawKey?.trim();
-
+  const { url: supabaseUrl, anonKey } = getSupabasePublicEnv();
   if (!supabaseUrl || !anonKey) {
-    // Unconfigured offline fallback: allow if local dev
-    return { authorized: true, user: { id: 'dev-admin', email: 'admin@thriv.pk' } };
+    console.warn(
+      '[admin-auth] Supabase public env vars missing — denying request (fail closed).'
+    );
+    return { authorized: false };
+  }
+
+  if (!isServiceConfigured()) {
+    console.warn(
+      '[admin-auth] Service-role key missing — cannot verify admin membership — denying request (fail closed).'
+    );
+    return { authorized: false };
   }
 
   try {
@@ -39,17 +53,20 @@ export async function verifyAdminRequest(req: NextRequest): Promise<{
       return { authorized: false };
     }
 
-    if (isServiceConfigured()) {
-      const serviceClient = getServiceClient();
-      const { data: adminRow } = await serviceClient
-        .from('admins')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+    const serviceClient = getServiceClient();
+    const { data: adminRow, error: adminError } = await serviceClient
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-      if (!adminRow) {
-        return { authorized: false };
-      }
+    if (adminError) {
+      console.error('[admin-auth] admins lookup failed:', adminError.message);
+      return { authorized: false };
+    }
+
+    if (!adminRow) {
+      return { authorized: false };
     }
 
     return {
@@ -57,7 +74,19 @@ export async function verifyAdminRequest(req: NextRequest): Promise<{
       user: { id: user.id, email: user.email },
     };
   } catch (err) {
-    console.error('[verifyAdminRequest] Error:', err);
+    console.error('[admin-auth] verifyAdminToken error:', err);
     return { authorized: false };
   }
+}
+
+/** Extracts the admin token from a request (cookie or Bearer header) and verifies it. */
+export async function verifyAdminRequest(req: NextRequest): Promise<{
+  authorized: boolean;
+  user?: AdminUser;
+}> {
+  const token =
+    req.cookies.get('thriv_admin_token')?.value ||
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+
+  return verifyAdminToken(token);
 }

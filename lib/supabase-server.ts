@@ -8,32 +8,30 @@
  * which is a server-only env var (no NEXT_PUBLIC_ prefix).
  *
  * Usage: import { getServiceClient } from '@/lib/supabase-server'
- * Only inside: API route handlers, server actions, middleware.
+ * Only inside: API route handlers, server actions, proxy.ts.
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  getSupabaseServiceEnv,
+  isSupabaseServiceConfigured,
+} from '@/lib/supabase-env';
 
 let _serviceClient: SupabaseClient | null = null;
 
 export function getServiceClient(): SupabaseClient {
   if (_serviceClient) return _serviceClient;
 
-  const rawUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const rawKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+  const { url, serviceKey } = getSupabaseServiceEnv();
 
-  const url = rawUrl?.trim().replace(/\/+$/, '').replace(/\/rest\/v1\/?$/, '');
-  const key = rawKey?.trim();
-
-  if (!url || !key) {
+  if (!url || !serviceKey) {
     throw new Error(
       '[supabase-server] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. ' +
         'Add them to .env.local and Vercel environment variables.'
     );
   }
 
-  _serviceClient = createClient(url, key, {
+  _serviceClient = createClient(url, serviceKey, {
     auth: {
       // Service role client never manages user sessions
       persistSession: false,
@@ -44,10 +42,11 @@ export function getServiceClient(): SupabaseClient {
   return _serviceClient;
 }
 
-/** Returns true if the service-role env vars are present. */
+/**
+ * Returns true only when both the project URL and the service-role key are
+ * present and look real. Placeholders (e.g. `<service_role_key>`) count as
+ * missing — audit F-24.
+ */
 export function isServiceConfigured(): boolean {
-  return Boolean(
-    (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) &&
-      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)
-  );
+  return isSupabaseServiceConfigured();
 }
