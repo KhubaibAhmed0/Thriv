@@ -13,12 +13,19 @@ interface YouMayAlsoLikeRowProps {
 export function YouMayAlsoLikeRow({ products }: YouMayAlsoLikeRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Respect reduced-motion for programmatic scrolling too (audit F-31).
+  const scrollBehavior = (): ScrollBehavior =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto'
+      : 'smooth';
+
   const scrollLeft = () => {
-    scrollRef.current?.scrollBy({ left: -280, behavior: 'smooth' });
+    scrollRef.current?.scrollBy({ left: -280, behavior: scrollBehavior() });
   };
 
   const scrollRight = () => {
-    scrollRef.current?.scrollBy({ left: 280, behavior: 'smooth' });
+    scrollRef.current?.scrollBy({ left: 280, behavior: scrollBehavior() });
   };
 
   // Show a curated selection: mix of thrift and merch, in-stock
@@ -28,14 +35,14 @@ export function YouMayAlsoLikeRow({ products }: YouMayAlsoLikeRowProps) {
 
   return (
     <div className="relative group/row">
-      {/* Left Arrow */}
+      {/* Left Arrow — 44px hit area (audit F-73) */}
       <button
         type="button"
         onClick={scrollLeft}
         aria-label="Scroll left"
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#E2E0DC] shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center hover:border-[#111111] transition-all opacity-0 group-hover/row:opacity-100 focus:opacity-100 cursor-pointer"
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white border border-border shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center hover:border-black transition-all opacity-0 group-hover/row:opacity-100 focus:opacity-100 cursor-pointer"
       >
-        <ChevronLeft className="w-4 h-4 text-[#111111] stroke-[2]" />
+        <ChevronLeft className="w-4 h-4 text-black stroke-[2]" />
       </button>
 
       {/* Scrollable Row */}
@@ -58,27 +65,27 @@ export function YouMayAlsoLikeRow({ products }: YouMayAlsoLikeRowProps) {
         <div className="shrink-0 w-[160px] sm:w-[180px] flex items-center justify-center" style={{ scrollSnapAlign: 'start' }}>
           <Link
             href="/shop"
-            className="flex flex-col items-center justify-center gap-3 bg-[#EDEBE8] rounded-[16px] w-full h-full min-h-[260px] border border-[#E2E0DC] hover:border-[#111111] transition-colors p-4 text-center"
+            className="flex flex-col items-center justify-center gap-3 bg-card rounded-[16px] w-full h-full min-h-[260px] border border-border hover:border-black transition-colors p-4 text-center"
           >
-            <div className="w-10 h-10 rounded-full bg-[#111111] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
               <ChevronRight className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-xs font-bold text-[#111111]">View All</p>
-              <p className="text-[10px] text-[#9A9A9A] mt-0.5">Full Collection</p>
+              <p className="text-xs font-bold text-black">View All</p>
+              <p className="text-[10px] text-muted-text mt-0.5">Full Collection</p>
             </div>
           </Link>
         </div>
       </div>
 
-      {/* Right Arrow */}
+      {/* Right Arrow — 44px hit area (audit F-73) */}
       <button
         type="button"
         onClick={scrollRight}
         aria-label="Scroll right"
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-[#E2E0DC] shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center hover:border-[#111111] transition-all opacity-0 group-hover/row:opacity-100 focus:opacity-100 cursor-pointer"
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white border border-border shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center hover:border-black transition-all opacity-0 group-hover/row:opacity-100 focus:opacity-100 cursor-pointer"
       >
-        <ChevronRight className="w-4 h-4 text-[#111111] stroke-[2]" />
+        <ChevronRight className="w-4 h-4 text-black stroke-[2]" />
       </button>
     </div>
   );

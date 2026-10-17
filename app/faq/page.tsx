@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     'Answers to common questions about Thriv: how to order, sizing for thrift vs. merch, delivery times, payment methods, condition grades, and our no-returns policy.',
 };
 
-const faqs: { q: string; a: string | React.ReactNode }[] = [
+const faqs: { q: string; a: string | React.ReactNode; id?: string }[] = [
   {
     q: 'How do I figure out the right size for a thrift piece?',
     a: (
@@ -23,7 +23,7 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
   },
   {
     q: 'How long does delivery take?',
-    a: 'We dispatch from Karachi. Estimated delivery is 3–7 working days depending on your city. Karachi deliveries typically arrive within 2–3 days. Further cities (Peshawar, Quetta, Gilgit) may take closer to 7 days. A tracking number from the courier will be sent on WhatsApp after dispatch. We cannot guarantee exact delivery dates as this depends on the courier.',
+    a: 'We dispatch from Karachi. Estimated delivery is 3–7 working days depending on your city. Karachi deliveries typically arrive within 2–3 days. Further cities (Peshawar, Quetta, Gilgit) may take closer to 7 days. Your courier tracking number is shared on WhatsApp — and shown on your order page — after dispatch. We cannot guarantee exact delivery dates as this depends on the courier.',
   },
   {
     q: 'How much does delivery cost?',
@@ -41,7 +41,7 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
           <li><strong>JazzCash</strong>: same process as EasyPaisa.</li>
           <li><strong>Card</strong>: card payments are coming soon and are not yet live.</li>
         </ul>
-        <span className="block mt-2 text-[#9A9A9A]">For Bank Transfer, EasyPaisa, and JazzCash, account details are displayed at checkout after you select the payment method.</span>
+        <span className="block mt-2 text-muted-text">For Bank Transfer, EasyPaisa, and JazzCash, account details are displayed at checkout after you select the payment method.</span>
       </span>
     ),
   },
@@ -51,21 +51,22 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
   },
   {
     q: 'What are the condition grades and what do they mean?',
+    id: 'condition-grades',
     a: (
       <span>
         All thrift items are graded using exactly three grades:
         <ul className="mt-2 space-y-2">
           <li>
-            <strong className="text-[#5A4A2F]">Premium</strong>: The piece shows no visible signs of wear. Hardware, stitching, wash colour, and structure are all in as-close-to-new condition as a pre-loved garment can be. Typically sourced from wardrobes where it was worn rarely or gently.
+            <strong className="text-badge-premium-text">Premium</strong>: The piece shows no visible signs of wear. Hardware, stitching, wash colour, and structure are all in as-close-to-new condition as a pre-loved garment can be. Typically sourced from wardrobes where it was worn rarely or gently.
           </li>
           <li>
-            <strong className="text-[#1E3A5F]">Excellent</strong>: Light signs of natural wear consistent with regular use: minimal fading, no structural flaws, pockets in good condition. This is the most common grade in our inventory.
+            <strong className="text-badge-excellent-text">Excellent</strong>: Light signs of natural wear consistent with regular use: minimal fading, no structural flaws, pockets in good condition. This is the most common grade in our inventory.
           </li>
           <li>
-            <strong className="text-[#2E5E2E]">Very Good</strong>: Visible signs of wear (surface fade, minor whisker marks, or softened cotton) that are characteristic of authentic pre-loved denim. No holes, tears, or structural damage. Still a great everyday piece.
+            <strong className="text-badge-verygood-text">Very Good</strong>: Visible signs of wear (surface fade, minor whisker marks, or softened cotton) that are characteristic of authentic pre-loved denim. No holes, tears, or structural damage. Still a great everyday piece.
           </li>
         </ul>
-        <span className="block mt-2 text-[#9A9A9A]">No item outside these three grades is listed. If a piece doesn&apos;t meet Very Good, it doesn&apos;t get listed.</span>
+        <span className="block mt-2 text-muted-text">No item outside these three grades is listed. If a piece doesn&apos;t meet Very Good, it doesn&apos;t get listed.</span>
       </span>
     ),
   },
@@ -81,7 +82,7 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
         <br /><br />
         <strong>WhatsApp:</strong> You can also message us directly on WhatsApp with the product name and size. We will confirm availability and share payment details.
         <br /><br />
-        Order confirmation is sent via both email and WhatsApp after the order is placed.
+        Order confirmation is sent on WhatsApp after the order is placed (and by email when email delivery is switched on for the store).
       </span>
     ),
   },
@@ -97,25 +98,25 @@ const faqs: { q: string; a: string | React.ReactNode }[] = [
 
 export default function FAQPage() {
   return (
-    <main className="min-h-screen bg-[#F5F3F0]">
+    <main className="min-h-screen bg-page">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 
         {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[#9A9A9A] mb-8">
-          <Link href="/" className="hover:text-[#111111] transition-colors">Home</Link>
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-text mb-8">
+          <Link href="/" className="hover:text-black transition-colors">Home</Link>
           <span>/</span>
-          <span className="text-[#111111] font-medium">FAQs</span>
+          <span className="text-black font-medium">FAQs</span>
         </nav>
 
         {/* Header */}
         <div className="mb-10">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#9A9A9A] mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-text mb-3">
             Frequently Asked Questions
           </p>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#111111] leading-tight tracking-tight">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-black leading-tight tracking-tight">
             Sizing, Delivery &amp;<br />Everything Else
           </h1>
-          <p className="text-sm text-[#444444] mt-4 max-w-xl leading-relaxed">
+          <p className="text-sm text-body mt-4 max-w-xl leading-relaxed">
             Answers to common questions about how Thriv works. If your question isn&apos;t here, message us on WhatsApp.
           </p>
         </div>
@@ -125,21 +126,22 @@ export default function FAQPage() {
           {faqs.map((faq, idx) => (
             <details
               key={idx}
-              className="group bg-[#EDEBE8] border border-[#E2E0DC] rounded-[16px] overflow-hidden open:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+              id={faq.id}
+              className="group bg-card border border-border rounded-[16px] overflow-hidden open:shadow-[0_2px_12px_rgba(0,0,0,0.06)] scroll-mt-24"
             >
-              <summary className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 cursor-pointer list-none select-none hover:bg-[#E8E5E0] transition-colors focus-visible:outline-[#111111] focus-visible:outline-2 focus-visible:outline-offset-2 rounded-[16px]">
-                <span className="text-sm font-semibold text-[#111111] leading-snug">
+              <summary className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 cursor-pointer list-none select-none hover:bg-card-hover transition-colors focus-visible:outline-black focus-visible:outline-2 focus-visible:outline-offset-2 rounded-[16px]">
+                <span className="text-sm font-semibold text-black leading-snug">
                   {faq.q}
                 </span>
                 {/* Plus/minus toggle indicator */}
                 <span
-                  className="shrink-0 w-6 h-6 rounded-full border border-[#E2E0DC] bg-white flex items-center justify-center text-[#111111] text-base font-bold transition-transform group-open:rotate-45"
+                  className="shrink-0 w-6 h-6 rounded-full border border-border bg-white flex items-center justify-center text-black text-base font-bold transition-transform group-open:rotate-45"
                   aria-hidden="true"
                 >
                   +
                 </span>
               </summary>
-              <div className="px-5 sm:px-6 pb-5 pt-2 text-sm text-[#444444] leading-relaxed border-t border-[#E2E0DC] mt-0">
+              <div className="px-5 sm:px-6 pb-5 pt-2 text-sm text-body leading-relaxed border-t border-border mt-0">
                 {faq.a}
               </div>
             </details>
@@ -147,30 +149,30 @@ export default function FAQPage() {
         </div>
 
         {/* Final sale reminder */}
-        <div className="mt-10 bg-[#F5E6E6] rounded-[16px] p-5 border border-[#E2C2C2]">
-          <p className="text-xs font-bold text-[#8B2020] uppercase tracking-wider mb-1">
+        <div className="mt-10 bg-badge-sold-bg rounded-[16px] p-5 border border-badge-sold-border">
+          <p className="text-xs font-bold text-badge-sold-text uppercase tracking-wider mb-1">
             No Returns · No Exchanges
           </p>
-          <p className="text-xs text-[#8B2020] leading-relaxed">
+          <p className="text-xs text-badge-sold-text leading-relaxed">
             All Thriv sales are strictly final. Check measurements before ordering. If you are unsure, message us on WhatsApp before placing your order.
           </p>
         </div>
 
         {/* Help CTA */}
         <div className="mt-10 text-center">
-          <p className="text-sm text-[#444444] mb-4">Still have a question?</p>
+          <p className="text-sm text-body mb-4">Still have a question?</p>
           <div className="flex flex-wrap justify-center gap-3">
             <a
               href="https://wa.me/923248188616?text=Hi+Thriv!+I+have+a+question."
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-[#111111] text-white font-bold text-sm px-6 py-3 rounded-full hover:bg-black transition-colors"
+              className="inline-flex items-center gap-2 bg-black text-white font-bold text-sm px-6 py-3 rounded-full hover:bg-black transition-colors"
             >
               Message on WhatsApp <ArrowRight className="w-4 h-4" />
             </a>
             <Link
               href="/shop"
-              className="inline-flex items-center gap-2 bg-white text-[#111111] border border-[#E2E0DC] hover:border-[#111111] font-semibold text-sm px-6 py-3 rounded-full transition-colors"
+              className="inline-flex items-center gap-2 bg-white text-black border border-border hover:border-black font-semibold text-sm px-6 py-3 rounded-full transition-colors"
             >
               Browse the Shop
             </Link>

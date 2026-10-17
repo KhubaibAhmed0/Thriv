@@ -185,7 +185,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#111111] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-6 h-6 text-neutral-500 animate-spin mx-auto mb-2" />
           <p className="text-xs text-neutral-400">Loading order {orderNumber}...</p>
@@ -196,7 +196,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-[#111111] text-white p-4 sm:p-6">
+      <div className="min-h-screen bg-black text-white p-4 sm:p-6">
         <div className="max-w-xl mx-auto space-y-4">
           <Link
             href="/admin"
@@ -218,7 +218,7 @@ export default function OrderDetailClient({ orderNumber }: { orderNumber: string
   );
 
   return (
-    <div className="min-h-screen bg-[#111111] text-white pb-16">
+    <div className="min-h-screen bg-black text-white pb-16">
       {/* Top Bar */}
       <header className="sticky top-0 z-30 bg-[#161616] border-b border-[#242424] px-4 py-3 sm:px-6">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-3">

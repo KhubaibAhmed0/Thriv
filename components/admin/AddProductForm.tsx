@@ -210,7 +210,7 @@ export function AddProductForm() {
   };
 
   return (
-    <div className="min-h-screen bg-[#111111] text-white pb-20">
+    <div className="min-h-screen bg-black text-white pb-20">
       <AdminNavHeader />
 
       <main className="max-w-4xl mx-auto px-4 py-6 sm:px-6">
@@ -241,7 +241,7 @@ export function AddProductForm() {
               <Link
                 href={`/product/${createdProduct.slug}`}
                 target="_blank"
-                className="flex-1 bg-white text-[#111111] hover:bg-neutral-200 font-bold text-xs py-3.5 px-4 rounded-full transition-colors text-center"
+                className="flex-1 bg-white text-black hover:bg-neutral-200 font-bold text-xs py-3.5 px-4 rounded-full transition-colors text-center"
               >
                 View in Store ↗
               </Link>
@@ -497,7 +497,7 @@ export function AddProductForm() {
                             onClick={() => toggleSize(sz)}
                             className={`w-9 h-9 rounded-[10px] text-xs font-bold border transition-colors cursor-pointer ${
                               active
-                                ? 'bg-white text-[#111111] border-white'
+                                ? 'bg-white text-black border-white'
                                 : 'bg-[#202020] text-neutral-400 border-[#303030] hover:text-white'
                             }`}
                           >
@@ -636,7 +636,7 @@ export function AddProductForm() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center justify-center gap-2 bg-white text-[#111111] hover:bg-neutral-200 font-bold text-sm px-8 py-3.5 rounded-full transition-colors disabled:opacity-50 cursor-pointer shadow-lg"
+                className="inline-flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-200 font-bold text-sm px-8 py-3.5 rounded-full transition-colors disabled:opacity-50 cursor-pointer shadow-lg"
               >
                 {submitting ? (
                   <>

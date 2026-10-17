@@ -45,7 +45,7 @@ export function AdminNavHeader({ onRefresh, loading = false }: AdminNavHeaderPro
               href="/admin"
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                 isOrders
-                  ? 'bg-white text-[#111111] shadow-sm'
+                  ? 'bg-white text-black shadow-sm'
                   : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -57,7 +57,7 @@ export function AdminNavHeader({ onRefresh, loading = false }: AdminNavHeaderPro
               href="/admin/products"
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                 isProducts
-                  ? 'bg-white text-[#111111] shadow-sm'
+                  ? 'bg-white text-black shadow-sm'
                   : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -72,7 +72,7 @@ export function AdminNavHeader({ onRefresh, loading = false }: AdminNavHeaderPro
           {isProducts && pathname !== '/admin/products/new' && (
             <Link
               href="/admin/products/new"
-              className="inline-flex items-center gap-1.5 bg-white text-[#111111] hover:bg-neutral-200 text-xs font-bold px-3.5 py-2 rounded-[10px] transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 bg-white text-black hover:bg-neutral-200 text-xs font-bold px-3.5 py-2 rounded-[10px] transition-colors shadow-sm"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               <span className="hidden sm:inline">Add New Item</span>

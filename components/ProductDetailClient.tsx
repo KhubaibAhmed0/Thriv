@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Heart,
@@ -10,13 +10,23 @@ import {
   Sparkles,
   AlertCircle,
   ArrowRight,
+  ChevronDown,
 } from 'lucide-react';
 import type { Product } from '@/types';
 import { ProductImage } from '@/components/ProductImage';
 import { Badge } from '@/components/ui/Badge';
 import { formatPrice } from '@/lib/formatPrice';
 import { useCart } from '@/components/CartProvider';
+import { useWishlist } from '@/components/WishlistProvider';
 import { ShopTheLook } from '@/components/ShopTheLook';
+import { setCurrentProduct } from '@/lib/currentProduct';
+
+/** One-line plain-language gloss for each grade (audit F-40). */
+const CONDITION_NOTES: Record<string, string> = {
+  Premium: 'no visible signs of wear.',
+  Excellent: 'light natural wear; no structural flaws.',
+  'Very Good': 'visible pre-loved character; no damage.',
+};
 
 interface ProductDetailClientProps {
   product: Product;
@@ -27,13 +37,25 @@ export function ProductDetailClient({
   product,
   relatedProducts,
 }: ProductDetailClientProps) {
-  const { addItem, isInCart } = useCart();
+  const { addItem, isInCart, announce } = useCart();
+  const { isSaved, toggle } = useWishlist();
+  const saved = isSaved(product.slug);
   const [selectedSize, setSelectedSize] = useState<string>(
     product.isMerch ? (product.sizes?.[0] ?? 'M') : (product.size ?? '')
   );
   const [quantity, setQuantity] = useState<number>(1);
-  const [isWishlisted, setIsWishlisted] = useState<boolean>(false);
   const [justAdded, setJustAdded] = useState<boolean>(false);
+
+  // Tell layout chrome (WhatsApp FAB) which piece is on screen (audit F-75).
+  useEffect(() => {
+    setCurrentProduct({
+      name: product.name,
+      brand: String(product.brand),
+      size: product.size,
+      condition: product.condition,
+    });
+    return () => setCurrentProduct(null);
+  }, [product.name, product.brand, product.size, product.condition]);
 
   const isSoldOut = product.stock <= 0;
   const alreadyInCart = isInCart(
@@ -54,31 +76,37 @@ export function ProductDetailClient({
       addItem(product, product.size ?? undefined);
     }
 
+    announce(`${product.name} added to cart`); // audit F-70
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 2000);
   };
+
+  const measurementValues = product.measurements
+    ? Object.values(product.measurements).filter(Boolean)
+    : [];
+  const hasMeasurements = measurementValues.length > 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       
       {/* Breadcrumb Navigation */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[#9A9A9A] mb-8 overflow-x-auto no-scrollbar">
-        <Link href="/" className="hover:text-[#111111] transition-colors shrink-0">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-text mb-8 overflow-x-auto no-scrollbar">
+        <Link href="/" className="hover:text-black transition-colors shrink-0">
           Home
         </Link>
         <span className="shrink-0">/</span>
-        <Link href="/shop" className="hover:text-[#111111] transition-colors shrink-0">
+        <Link href="/shop" className="hover:text-black transition-colors shrink-0">
           Shop
         </Link>
         <span className="shrink-0">/</span>
         <Link
           href={`/shop?category=${product.category}`}
-          className="hover:text-[#111111] transition-colors shrink-0 capitalize"
+          className="hover:text-black transition-colors shrink-0 capitalize"
         >
           {product.category === 'jeans' ? 'Jeans' : 'Graphic Tees'}
         </Link>
         <span className="shrink-0">/</span>
-        <span className="text-[#111111] font-medium truncate max-w-[200px] sm:max-w-md shrink-0">
+        <span className="text-black font-medium truncate max-w-[200px] sm:max-w-md shrink-0">
           {product.name}
         </span>
       </nav>
@@ -88,7 +116,7 @@ export function ProductDetailClient({
         
         {/* Left Column: Image Gallery */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="relative bg-[#EDEBE8] rounded-[20px] p-3 sm:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-[#E2E0DC]">
+          <div className="relative bg-card rounded-[20px] p-3 sm:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-border">
             <ProductImage
               slug={product.slug}
               brand={product.brand}
@@ -100,36 +128,43 @@ export function ProductDetailClient({
               className="w-full rounded-[16px]"
             />
 
-            {/* Top-Right Wishlist Button */}
+            {/* Top-Right Wishlist Button — persisted, 44px hit (F-24/F-73) */}
             <button
               type="button"
-              onClick={() => setIsWishlisted(!isWishlisted)}
-              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-              className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.12)] hover:scale-110 active:scale-95 transition-all duration-150 cursor-pointer"
+              onClick={() => toggle(product.slug)}
+              aria-pressed={saved}
+              aria-label={
+                saved
+                  ? `Remove ${product.name} from saved items`
+                  : `Save ${product.name} to wishlist`
+              }
+              className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-150 cursor-pointer"
             >
-              <Heart
-                className={[
-                  'w-5 h-5 transition-colors',
-                  isWishlisted
-                    ? 'fill-[#8B2020] text-[#8B2020]'
-                    : 'text-[#111111] stroke-[1.75]',
-                ].join(' ')}
-              />
+              <span className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
+                <Heart
+                  className={[
+                    'w-5 h-5 transition-colors',
+                    saved
+                      ? 'fill-badge-sold-text text-badge-sold-text'
+                      : 'text-black stroke-[1.75]',
+                  ].join(' ')}
+                />
+              </span>
             </button>
 
             {/* Top-Left Badge */}
             <div className="absolute top-6 left-6 flex flex-col gap-1.5">
               {product.isMerch ? (
-                <span className="px-3 py-1 bg-[#111111] text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
+                <span className="px-3 py-1 bg-black text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
                   In-House Merch
                 </span>
               ) : (
-                <span className="px-3 py-1 bg-white text-[#111111] text-xs font-semibold rounded-full border border-[#E2E0DC] shadow-sm">
+                <span className="px-3 py-1 bg-white text-black text-xs font-semibold rounded-full border border-border shadow-sm">
                   One-of-One Thrift Piece
                 </span>
               )}
               {isSoldOut && (
-                <span className="px-3 py-1 bg-[#F5E6E6] text-[#8B2020] text-xs font-bold rounded-full">
+                <span className="px-3 py-1 bg-badge-sold-bg text-badge-sold-text text-xs font-bold rounded-full">
                   Sold Out
                 </span>
               )}
@@ -137,7 +172,7 @@ export function ProductDetailClient({
           </div>
 
           {/* Additional angles placeholder note */}
-          <div className="flex items-center justify-between px-2 text-xs text-[#9A9A9A]">
+          <div className="flex items-center justify-between px-2 text-xs text-muted-text">
             <span>Authentic pre-sanitized piece</span>
             <span>Karachi Warehouse Stock</span>
           </div>
@@ -149,33 +184,47 @@ export function ProductDetailClient({
           <div>
             
             {/* 1. Brand (small, muted) */}
-            <p className="text-xs font-bold uppercase tracking-widest text-[#9A9A9A]">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-text">
               {product.brand}
             </p>
 
             {/* 2. Name */}
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111111] mt-1.5 leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-black mt-1.5 leading-tight">
               {product.name}
             </h1>
 
             {/* 3. Price (bold) & Condition Badge (pill) */}
             <div className="mt-4 flex items-baseline gap-4">
-              <span className="text-2xl sm:text-3xl font-black text-[#111111]">
+              <span className="text-2xl sm:text-3xl font-black text-black">
                 {formatPrice(product.price)}
               </span>
               <Badge variant="condition" label={product.condition} />
             </div>
 
+            {/* 3b. Plain-language grade note + link to the full grade system (audit F-40) */}
+            {!product.isMerch && CONDITION_NOTES[product.condition] && (
+              <p className="text-xs text-body mt-2 leading-relaxed">
+                Graded <strong>{product.condition}</strong>:{' '}
+                {CONDITION_NOTES[product.condition]}{' '}
+                <Link
+                  href="/faq#condition-grades"
+                  className="font-semibold text-black underline underline-offset-2 decoration-border hover:decoration-black transition-colors"
+                >
+                  What the grades mean
+                </Link>
+              </p>
+            )}
+
             {/* 4. Sizing Section (Strict Domain Distinction) */}
-            <div className="mt-6 pt-6 border-t border-[#E2E0DC]">
+            <div className="mt-6 pt-6 border-t border-border">
               {product.isMerch ? (
                 /* Merch: Size Selector */
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#111111]">
+                    <span className="text-xs font-bold uppercase tracking-wider text-black">
                       Select Size:
                     </span>
-                    <span className="text-xs text-[#9A9A9A]">Heavyweight Relaxed Fit</span>
+                    <span className="text-xs text-muted-text">Heavyweight Relaxed Fit</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {product.sizes?.map((sz) => (
@@ -186,8 +235,8 @@ export function ProductDetailClient({
                         className={[
                           'w-12 h-11 rounded-full text-xs font-bold transition-all duration-150 cursor-pointer',
                           selectedSize === sz
-                            ? 'bg-[#111111] text-white shadow-sm'
-                            : 'bg-white text-[#111111] border border-[#E2E0DC] hover:border-[#111111]',
+                            ? 'bg-black text-white shadow-sm'
+                            : 'bg-white text-black border border-border hover:border-black',
                         ].join(' ')}
                       >
                         {sz}
@@ -197,16 +246,16 @@ export function ProductDetailClient({
                 </div>
               ) : (
                 /* Thrift: One Piece Only · Size {size} */
-                <div className="bg-[#EDEBE8] rounded-[14px] p-3.5 border border-[#E2E0DC]/70">
+                <div className="bg-card rounded-[14px] p-3.5 border border-border/70">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#111111]">
+                    <span className="text-xs font-bold uppercase tracking-wider text-black">
                       One Piece Only · Size {product.size}
                     </span>
-                    <span className="text-[11px] font-semibold text-[#8B2020] bg-[#F5E6E6] px-2 py-0.5 rounded-full">
+                    <span className="text-[11px] font-semibold text-badge-sold-text bg-badge-sold-bg px-2 py-0.5 rounded-full">
                       Stock: {product.stock}
                     </span>
                   </div>
-                  <p className="text-xs text-[#444444] mt-1">
+                  <p className="text-xs text-body mt-1">
                     Thrift inventory consists of unique 1-of-1 pieces. Once this item is ordered, there is no restock.
                   </p>
                 </div>
@@ -217,36 +266,38 @@ export function ProductDetailClient({
             <div className="mt-5">
               {product.isMerch && !isSoldOut ? (
                 <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#111111]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-black">
                     Quantity:
                   </span>
-                  <div className="flex items-center bg-white border border-[#E2E0DC] rounded-full px-2 py-1">
+                  <div className="flex items-center bg-white border border-border rounded-full px-1.5 py-0.5">
                     <button
                       type="button"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       disabled={quantity <= 1}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-[#111111] hover:bg-[#EDEBE8] disabled:opacity-30 cursor-pointer"
+                      aria-label="Decrease quantity"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-black hover:bg-card disabled:opacity-30 cursor-pointer"
                     >
                       -
                     </button>
-                    <span className="w-8 text-center text-xs font-bold text-[#111111]">
+                    <span className="w-10 text-center text-xs font-bold text-black">
                       {quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
                       disabled={quantity >= product.stock}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-[#111111] hover:bg-[#EDEBE8] disabled:opacity-30 cursor-pointer"
+                      aria-label="Increase quantity"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-black hover:bg-card disabled:opacity-30 cursor-pointer"
                     >
                       +
                     </button>
                   </div>
-                  <span className="text-xs text-[#9A9A9A]">
+                  <span className="text-xs text-muted-text">
                     {product.stock} available in batch
                   </span>
                 </div>
               ) : (
-                <p className="text-xs text-[#9A9A9A]">
+                <p className="text-xs text-muted-text">
                   Quantity locked to 1 for thrift piece.
                 </p>
               )}
@@ -257,7 +308,7 @@ export function ProductDetailClient({
               {isSoldOut ? (
                 <button
                   disabled
-                  className="w-full bg-[#F5E6E6] text-[#8B2020] font-bold text-sm py-4 rounded-full cursor-not-allowed text-center"
+                  className="w-full bg-badge-sold-bg text-badge-sold-text font-bold text-sm py-4 rounded-full cursor-not-allowed text-center"
                 >
                   Sold Out (No Restocks)
                 </button>
@@ -268,10 +319,10 @@ export function ProductDetailClient({
                   className={[
                     'w-full py-4 rounded-full font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-150 active:scale-[0.99] cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.12)]',
                     justAdded
-                      ? 'bg-[#3A6B35] text-white'
+                      ? 'bg-badge-promo-text text-white'
                       : alreadyInCart
                       ? 'bg-[#2a2a2a] text-white hover:bg-black'
-                      : 'bg-[#111111] text-white hover:bg-black',
+                      : 'bg-black text-white hover:bg-black',
                   ].join(' ')}
                 >
                   {justAdded ? (
@@ -296,7 +347,7 @@ export function ProductDetailClient({
               {alreadyInCart && (
                 <Link
                   href="/cart"
-                  className="w-full py-3 rounded-full text-xs font-bold text-[#111111] bg-white border border-[#E2E0DC] hover:border-[#111111] flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full py-3 rounded-full text-xs font-bold text-black bg-white border border-border hover:border-black flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <span>Go to Checkout</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -305,79 +356,111 @@ export function ProductDetailClient({
             </div>
 
             {/* 7. Trust Row under CTA (Disinfected, No Returns, Rs 200 Delivery) */}
-            <div className="mt-6 bg-white rounded-[16px] p-4 border border-[#E2E0DC] space-y-3">
-              <div className="flex items-center gap-3 text-xs text-[#444444]">
-                <Sparkles className="w-4 h-4 text-[#111111] shrink-0" />
+            <div className="mt-6 bg-white rounded-[16px] p-4 border border-border space-y-3">
+              <div className="flex items-center gap-3 text-xs text-body">
+                <Sparkles className="w-4 h-4 text-black shrink-0" />
                 <span>Handpicked & thoroughly disinfected before dispatch.</span>
               </div>
-              <div className="flex items-center gap-3 text-xs text-[#444444]">
-                <Truck className="w-4 h-4 text-[#111111] shrink-0" />
+              <div className="flex items-center gap-3 text-xs text-body">
+                <Truck className="w-4 h-4 text-black shrink-0" />
                 <span>Flat Rs 200 courier delivery nationwide across Pakistan.</span>
               </div>
-              <div className="flex items-center gap-3 text-xs text-[#8B2020] font-medium">
-                <AlertCircle className="w-4 h-4 text-[#8B2020] shrink-0" />
+              <div className="flex items-center gap-3 text-xs text-badge-sold-text font-medium">
+                <AlertCircle className="w-4 h-4 text-badge-sold-text shrink-0" />
                 <span>Strictly no returns, no exchanges. Check measurements below.</span>
               </div>
             </div>
 
-            {/* 8. Measurements Table */}
-            {product.measurements && (
-              <div className="mt-6">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#111111] mb-2.5">
-                  Exact Measurements (Inches)
-                </h3>
-                <div className="bg-[#EDEBE8] rounded-[14px] p-3.5 border border-[#E2E0DC]">
+            {/* 8. Measurements Table — with empty state (F-22) + measuring guide (F-76) */}
+            <div className="mt-6">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-black mb-2.5">
+                Exact Measurements (Inches)
+              </h2>
+              {hasMeasurements ? (
+                <div className="bg-card rounded-[14px] p-3.5 border border-border">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                    {product.measurements.waist && (
+                    {product.measurements?.waist && (
                       <div className="bg-white rounded-[8px] p-2">
-                        <p className="text-[10px] text-[#9A9A9A] uppercase">Waist</p>
-                        <p className="text-xs font-bold text-[#111111]">{product.measurements.waist}</p>
+                        <p className="text-[10px] text-muted-text uppercase">Waist</p>
+                        <p className="text-xs font-bold text-black">{product.measurements.waist}</p>
                       </div>
                     )}
-                    {product.measurements.length && (
+                    {product.measurements?.length && (
                       <div className="bg-white rounded-[8px] p-2">
-                        <p className="text-[10px] text-[#9A9A9A] uppercase">Length</p>
-                        <p className="text-xs font-bold text-[#111111]">{product.measurements.length}</p>
+                        <p className="text-[10px] text-muted-text uppercase">Length</p>
+                        <p className="text-xs font-bold text-black">{product.measurements.length}</p>
                       </div>
                     )}
-                    {product.measurements.inseam && (
+                    {product.measurements?.inseam && (
                       <div className="bg-white rounded-[8px] p-2">
-                        <p className="text-[10px] text-[#9A9A9A] uppercase">Inseam</p>
-                        <p className="text-xs font-bold text-[#111111]">{product.measurements.inseam}</p>
+                        <p className="text-[10px] text-muted-text uppercase">Inseam</p>
+                        <p className="text-xs font-bold text-black">{product.measurements.inseam}</p>
                       </div>
                     )}
-                    {product.measurements.rise && (
+                    {product.measurements?.rise && (
                       <div className="bg-white rounded-[8px] p-2">
-                        <p className="text-[10px] text-[#9A9A9A] uppercase">Rise</p>
-                        <p className="text-xs font-bold text-[#111111]">{product.measurements.rise}</p>
+                        <p className="text-[10px] text-muted-text uppercase">Rise</p>
+                        <p className="text-xs font-bold text-black">{product.measurements.rise}</p>
                       </div>
                     )}
-                    {product.measurements.chest && (
+                    {product.measurements?.chest && (
                       <div className="bg-white rounded-[8px] p-2">
-                        <p className="text-[10px] text-[#9A9A9A] uppercase">Chest</p>
-                        <p className="text-xs font-bold text-[#111111]">{product.measurements.chest}</p>
+                        <p className="text-[10px] text-muted-text uppercase">Chest</p>
+                        <p className="text-xs font-bold text-black">{product.measurements.chest}</p>
                       </div>
                     )}
-                    {product.measurements.shoulders && (
+                    {product.measurements?.shoulders && (
                       <div className="bg-white rounded-[8px] p-2">
-                        <p className="text-[10px] text-[#9A9A9A] uppercase">Shoulders</p>
-                        <p className="text-xs font-bold text-[#111111]">{product.measurements.shoulders}</p>
+                        <p className="text-[10px] text-muted-text uppercase">Shoulders</p>
+                        <p className="text-xs font-bold text-black">{product.measurements.shoulders}</p>
                       </div>
                     )}
                   </div>
-                  <p className="text-[10px] text-[#9A9A9A] mt-2 text-center">
+                  <p className="text-[10px] text-muted-text mt-2 text-center">
                     Measurements taken flat. Compare against a pair you currently own.
                   </p>
+
+                  <details className="mt-3 border-t border-border pt-2.5 group/measure">
+                    <summary className="flex items-center gap-1.5 text-[11px] font-semibold text-black cursor-pointer select-none list-none">
+                      How to measure yourself
+                      <ChevronDown className="w-3.5 h-3.5 transition-transform group-open/measure:rotate-180" />
+                    </summary>
+                    <ol className="mt-2 space-y-1.5 text-[11px] text-body leading-relaxed list-decimal list-inside">
+                      <li>Lay a garment you already love flat, zip/buttons closed.</li>
+                      <li>Waist: measure across the top edge, then double it.</li>
+                      <li>Inseam: from the crotch seam straight down to the hem.</li>
+                      <li>Trust the tape over the label — thrift sizing varies between brands and years.</li>
+                    </ol>
+                  </details>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="bg-white rounded-[14px] p-4 border border-border">
+                  <p className="text-xs text-body leading-relaxed">
+                    Exact measurements for this piece are not published yet. Message
+                    us and we will measure it for you before you order — all sales
+                    are final.
+                  </p>
+                  <a
+                    href={`https://wa.me/923248188616?text=${encodeURIComponent(
+                      `Hi Thriv! Can you share measurements for ${product.brand} — ${product.name}?`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 min-h-11 mt-3 text-xs font-bold text-black underline underline-offset-4 decoration-border hover:decoration-black transition-colors"
+                  >
+                    Ask on WhatsApp
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+            </div>
 
             {/* 9. Description Copy */}
             <div className="mt-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#111111] mb-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-black mb-2">
                 Item Description
-              </h3>
-              <p className="text-sm text-[#444444] leading-relaxed">
+              </h2>
+              <p className="text-sm text-body leading-relaxed">
                 {product.description}
               </p>
             </div>
@@ -388,7 +471,7 @@ export function ProductDetailClient({
       </div>
 
       {/* ── Related Items / Shop The Look Module ── */}
-      <div className="mt-20 pt-12 border-t border-[#E2E0DC]">
+      <div className="mt-20 pt-12 border-t border-border">
         <ShopTheLook
           title={`Complete The Fit with ${product.brand}`}
           items={relatedProducts}

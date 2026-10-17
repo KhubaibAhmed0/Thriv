@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { SITE_URL } from '@/lib/site-url';
 import { CartProvider } from '@/components/CartProvider';
+import { WishlistProvider } from '@/components/WishlistProvider';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { WhatsAppFAB } from '@/components/WhatsAppFAB';
@@ -20,10 +22,14 @@ export const metadata: Metadata = {
   },
   description:
     'Handpicked, disinfected thrift from H&M, Zara, Bershka, Calvin Klein, and Old Navy. One piece, one price, flat Rs 200 delivery across Pakistan.',
-  metadataBase: new URL('https://thriv.pk'),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     siteName: 'thriv',
     locale: 'en_PK',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
   },
 };
 
@@ -34,14 +40,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="bg-[#F5F3F0] text-[#111111] font-[var(--font-inter)] antialiased min-h-screen flex flex-col justify-between">
+      <body className="bg-page text-black font-[var(--font-inter)] antialiased min-h-screen flex flex-col justify-between">
         <CartProvider>
-          <Header />
-          <div className="flex-1">
-            {children}
-          </div>
-          <Footer />
-          <WhatsAppFAB />
+          <WishlistProvider>
+            <Header />
+            <div className="flex-1">
+              {children}
+            </div>
+            <Footer />
+            <WhatsAppFAB />
+          </WishlistProvider>
         </CartProvider>
       </body>
     </html>

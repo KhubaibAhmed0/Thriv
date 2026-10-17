@@ -44,6 +44,8 @@ interface ServerOrder {
   delivery_fee_pkr: number;
   total_pkr: number;
   created_at: string;
+  tracking_number?: string | null;
+  courier?: string | null;
   items: ServerOrderItem[];
 }
 
@@ -61,6 +63,8 @@ interface ViewOrder {
   city?: string;
   province?: string;
   notes?: string;
+  trackingNumber?: string | null;
+  courier?: string | null;
 }
 
 function snapshotToView(snap: OrderData): ViewOrder {
@@ -92,6 +96,8 @@ function serverToView(server: ServerOrder): ViewOrder {
     subtotal: server.subtotal_pkr,
     deliveryFee: server.delivery_fee_pkr,
     total: server.total_pkr,
+    trackingNumber: server.tracking_number ?? null,
+    courier: server.courier ?? null,
     items: (server.items ?? []).map((item) => ({
       name: item.name,
       brand: item.brand,
@@ -110,6 +116,9 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
   const [snapshotView, setSnapshotView] = useState<ViewOrder | null>(null);
   const [serverView, setServerView] = useState<ViewOrder | null>(null);
   const [serverDone, setServerDone] = useState(false);
+  // Whether the store's email service is actually live (audit F-26). Default
+  // false so copy never promises an email the backend cannot send.
+  const [emailEnabled, setEmailEnabled] = useState(false);
 
   // The page can render as soon as either source lands: the snapshot
   // immediately (when present), otherwise the server lookup.
@@ -145,6 +154,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
       .then((data) => {
         if (!cancelled && data?.order) {
           setServerView(serverToView(data.order as ServerOrder));
+          setEmailEnabled(data.email_enabled === true);
         }
       })
       .catch(() => {
@@ -177,7 +187,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -187,41 +197,43 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
 
       {/* Success Header */}
       <div className="text-center mb-10">
-        <div className="w-16 h-16 rounded-full bg-[#E8F0E0] border border-[#C5DEBB] flex items-center justify-center mx-auto mb-5">
-          <CheckCircle className="w-8 h-8 text-[#3A6B35]" />
+        <div className="w-16 h-16 rounded-full bg-badge-promo-bg border border-[#C5DEBB] flex items-center justify-center mx-auto mb-5">
+          <CheckCircle className="w-8 h-8 text-badge-promo-text" />
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-[#3A6B35] mb-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-badge-promo-text mb-2">
           Order Placed Successfully
         </p>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111111] leading-tight">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-black leading-tight">
           Thank You{view?.customerName ? `, ${view.customerName.split(' ')[0]}` : ''}!
         </h1>
-        <div className="mt-3 inline-block bg-[#EDEBE8] border border-[#E2E0DC] px-4 py-2 rounded-full">
-          <p className="text-sm font-mono font-bold text-[#111111] tracking-wider">
+        <div className="mt-3 inline-block bg-card border border-border px-4 py-2 rounded-full">
+          <p className="text-sm font-mono font-bold text-black tracking-wider">
             Order: {orderNumber}
           </p>
         </div>
-        <p className="text-sm text-[#444444] mt-3 leading-relaxed">
-          {view?.email
-            ? `Confirmation will be sent to ${view.email} and messaged to ${view.whatsapp} shortly.`
+        <p className="text-sm text-body mt-3 leading-relaxed">
+          {view?.email && emailEnabled
+            ? `A receipt is on its way to ${view.email}, and we'll confirm on WhatsApp shortly.`
+            : view?.email
+            ? 'Order received — we will confirm on WhatsApp shortly. Email receipts are not switched on yet, so watch WhatsApp for updates.'
             : 'Your order has been received. You will receive a confirmation on WhatsApp shortly.'}
         </p>
       </div>
 
       {/* What Happens Next */}
-      <div className="bg-[#EDEBE8] rounded-[20px] p-5 sm:p-6 border border-[#E2E0DC] mb-6">
-        <h2 className="text-sm font-extrabold text-[#111111] uppercase tracking-wider mb-5">
+      <div className="bg-card rounded-[20px] p-5 sm:p-6 border border-border mb-6">
+        <h2 className="text-sm font-extrabold text-black uppercase tracking-wider mb-5">
           What Happens Next
         </h2>
 
         <div className="space-y-4">
           <div className="flex items-start gap-3.5">
-            <div className="w-7 h-7 rounded-full bg-[#111111] text-white text-xs font-bold flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shrink-0">
               1
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#111111]">Confirm on WhatsApp</p>
-              <p className="text-xs text-[#444444] mt-0.5 leading-relaxed">
+              <p className="text-sm font-semibold text-black">Confirm on WhatsApp</p>
+              <p className="text-xs text-body mt-0.5 leading-relaxed">
                 Send us a quick message with your order number. We&apos;ll acknowledge and confirm availability.
               </p>
             </div>
@@ -229,30 +241,30 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
 
           {isNonCod && (
             <div className="flex items-start gap-3.5">
-              <div className="w-7 h-7 rounded-full bg-[#111111] text-white text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shrink-0">
                 2
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#111111]">
+                <p className="text-sm font-semibold text-black">
                   Send Payment Screenshot
                 </p>
-                <p className="text-xs text-[#444444] mt-0.5 leading-relaxed">
+                <p className="text-xs text-body mt-0.5 leading-relaxed">
                   Transfer{' '}
                   <strong>{view ? formatPrice(view.total) : 'your total'}</strong> via{' '}
                   {paymentLabel(view?.paymentMethod) ?? 'your chosen method'} and share the screenshot on WhatsApp (<strong>0324-8188616</strong>) with your order number.
                 </p>
                 {view?.paymentMethod === 'bank-transfer' && (
-                  <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
-                    <p className="font-bold text-[#111111]">Faysal Bank</p>
-                    <p className="text-[#444444]">Title: <span className="font-semibold text-[#111111]">HASSAN RAZA</span></p>
-                    <p className="font-mono text-[#111111] select-all">IBAN: PK05FAYS3605301000003020</p>
+                  <div className="mt-2 p-3 bg-white rounded-[12px] border border-border text-xs space-y-1">
+                    <p className="font-bold text-black">Faysal Bank</p>
+                    <p className="text-body">Title: <span className="font-semibold text-black">HASSAN RAZA</span></p>
+                    <p className="font-mono text-black select-all">IBAN: PK05FAYS3605301000003020</p>
                   </div>
                 )}
                 {(view?.paymentMethod === 'easypaisa' || view?.paymentMethod === 'jazzcash') && (
-                  <div className="mt-2 p-3 bg-white rounded-[12px] border border-[#E2E0DC] text-xs space-y-1">
-                    <p className="font-bold text-[#111111]">{paymentLabel(view.paymentMethod) ?? view.paymentMethod}</p>
-                    <p className="text-[#444444]">Title: <span className="font-semibold text-[#111111]">HASSAN RAZA</span></p>
-                    <p className="font-mono text-[#111111] select-all">Account: 0324-8188616</p>
+                  <div className="mt-2 p-3 bg-white rounded-[12px] border border-border text-xs space-y-1">
+                    <p className="font-bold text-black">{paymentLabel(view.paymentMethod) ?? view.paymentMethod}</p>
+                    <p className="text-body">Title: <span className="font-semibold text-black">HASSAN RAZA</span></p>
+                    <p className="font-mono text-black select-all">Account: 0324-8188616</p>
                   </div>
                 )}
               </div>
@@ -260,14 +272,26 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
           )}
 
           <div className="flex items-start gap-3.5">
-            <div className="w-7 h-7 rounded-full bg-[#111111] text-white text-xs font-bold flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-full bg-black text-white text-xs font-bold flex items-center justify-center shrink-0">
               {isNonCod ? '3' : '2'}
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#111111]">Dispatch & Tracking</p>
-              <p className="text-xs text-[#444444] mt-0.5 leading-relaxed">
-                We dispatch from Karachi within 1–2 working days. You&apos;ll receive a courier tracking number on WhatsApp once dispatched. Estimated delivery: 3–7 working days.
+              <p className="text-sm font-semibold text-black">Dispatch & Tracking</p>
+              <p className="text-xs text-body mt-0.5 leading-relaxed">
+                We dispatch from Karachi within 1–2 working days. Estimated delivery: 3–7 working days.
               </p>
+              {view?.trackingNumber ? (
+                <div className="mt-2 p-3 bg-white rounded-[12px] border border-border text-xs space-y-1">
+                  <p className="font-bold text-black">
+                    {view.courier ? `Tracking · ${view.courier}` : 'Courier Tracking'}
+                  </p>
+                  <p className="font-mono text-black select-all">{view.trackingNumber}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-text mt-1">
+                  Your courier tracking number will appear here and be shared on WhatsApp once dispatched.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -275,8 +299,8 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
 
       {/* Order Summary (server-sourced when available) */}
       {view && view.items.length > 0 && (
-        <div className="bg-[#EDEBE8] rounded-[20px] p-5 sm:p-6 border border-[#E2E0DC] mb-6">
-          <h2 className="text-sm font-extrabold text-[#111111] uppercase tracking-wider mb-4">
+        <div className="bg-card rounded-[20px] p-5 sm:p-6 border border-border mb-6">
+          <h2 className="text-sm font-extrabold text-black uppercase tracking-wider mb-4">
             Order Summary
           </h2>
 
@@ -284,30 +308,30 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
             {view.items.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[#111111] font-medium truncate">{item.name}</p>
-                  <p className="text-[10px] text-[#9A9A9A]">
+                  <p className="text-black font-medium truncate">{item.name}</p>
+                  <p className="text-[10px] text-muted-text">
                     {item.size && `Size ${item.size} · `}
                     {item.brand}
                     {item.quantity > 1 ? ` · ×${item.quantity}` : ''}
                   </p>
                 </div>
-                <p className="font-semibold text-[#111111] shrink-0">
+                <p className="font-semibold text-black shrink-0">
                   {formatPrice(item.unitPrice * item.quantity)}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="border-t border-[#E2E0DC] pt-3 space-y-1.5 text-sm">
-            <div className="flex justify-between text-[#444444]">
+          <div className="border-t border-border pt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between text-body">
               <span>Subtotal</span>
               <span>{formatPrice(view.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-[#444444]">
+            <div className="flex justify-between text-body">
               <span>Delivery</span>
               <span>{formatPrice(view.deliveryFee)}</span>
             </div>
-            <div className="flex justify-between font-extrabold text-[#111111] text-base pt-1">
+            <div className="flex justify-between font-extrabold text-black text-base pt-1">
               <span>Total</span>
               <span>{formatPrice(view.total)}</span>
             </div>
@@ -316,23 +340,23 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
           <div
             className={
               view.address
-                ? 'mt-4 pt-4 border-t border-[#E2E0DC] grid grid-cols-2 gap-3 text-xs text-[#444444]'
-                : 'mt-4 pt-4 border-t border-[#E2E0DC] grid grid-cols-1 gap-3 text-xs text-[#444444]'
+                ? 'mt-4 pt-4 border-t border-border grid grid-cols-2 gap-3 text-xs text-body'
+                : 'mt-4 pt-4 border-t border-border grid grid-cols-1 gap-3 text-xs text-body'
             }
           >
             {view.address && (
               <div>
-                <p className="font-bold text-[#111111] mb-0.5">Delivery To</p>
+                <p className="font-bold text-black mb-0.5">Delivery To</p>
                 <p>{view.address}</p>
                 <p>{view.city}, {view.province}</p>
               </div>
             )}
             <div>
-              <p className="font-bold text-[#111111] mb-0.5">Payment</p>
+              <p className="font-bold text-black mb-0.5">Payment</p>
               <p>{paymentLabel(view.paymentMethod) ?? view.paymentMethod}</p>
               {view.notes && (
                 <>
-                  <p className="font-bold text-[#111111] mt-2 mb-0.5">Notes</p>
+                  <p className="font-bold text-black mt-2 mb-0.5">Notes</p>
                   <p className="italic">{view.notes}</p>
                 </>
               )}
@@ -342,7 +366,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
       )}
 
       {/* Final Sale Reminder */}
-      <div className="bg-[#F5E6E6] rounded-[14px] p-4 border border-[#E2C2C2] mb-8 text-xs text-[#8B2020] leading-relaxed">
+      <div className="bg-badge-sold-bg rounded-[14px] p-4 border border-badge-sold-border mb-8 text-xs text-badge-sold-text leading-relaxed">
         <strong>Reminder: All sales are final.</strong> No returns or exchanges. If you have a query about your order, message us on WhatsApp before dispatch.
       </div>
 
@@ -352,14 +376,14 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 inline-flex items-center justify-center gap-2 bg-[#111111] text-white font-bold text-sm py-4 rounded-full hover:bg-black transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-black text-white font-bold text-sm py-4 rounded-full hover:bg-black transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
         >
           <MessageCircle className="w-4 h-4" />
           Confirm on WhatsApp
         </a>
         <Link
           href="/shop"
-          className="flex-1 inline-flex items-center justify-center gap-2 bg-white text-[#111111] border border-[#E2E0DC] hover:border-[#111111] font-semibold text-sm py-4 rounded-full transition-colors"
+          className="flex-1 inline-flex items-center justify-center gap-2 bg-white text-black border border-border hover:border-black font-semibold text-sm py-4 rounded-full transition-colors"
         >
           <ShoppingBag className="w-4 h-4" />
           Continue Shopping
@@ -367,9 +391,9 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
       </div>
 
       {/* Order number repeat for easy copy */}
-      <p className="text-center text-xs text-[#9A9A9A] mt-6">
+      <p className="text-center text-xs text-muted-text mt-6">
         Keep this order number:{' '}
-        <span className="font-mono font-bold text-[#111111]">{orderNumber}</span>
+        <span className="font-mono font-bold text-black">{orderNumber}</span>
       </p>
 
     </div>

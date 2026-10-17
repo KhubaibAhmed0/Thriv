@@ -83,8 +83,8 @@ export function BrowseShopSection({ products: initialProducts, featuredMerch: in
             className={[
               'px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0',
               activeTab === tab.id
-                ? 'bg-[#111111] text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
-                : 'bg-white text-[#444444] hover:text-[#111111] border border-[#E2E0DC] hover:border-[#111111]',
+                ? 'bg-black text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
+                : 'bg-white text-body hover:text-black border border-border hover:border-black',
             ].join(' ')}
           >
             {tab.label}
@@ -107,7 +107,7 @@ export function BrowseShopSection({ products: initialProducts, featuredMerch: in
       <div className="mt-8 text-center">
         <Link
           href={shopMoreHref}
-          className="inline-flex items-center justify-center gap-2 bg-[#111111] text-white hover:bg-black font-bold text-xs sm:text-sm px-8 py-3.5 rounded-full transition-all shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-95 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 bg-black text-white hover:bg-black font-bold text-xs sm:text-sm px-8 py-3.5 rounded-full transition-all shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-95 cursor-pointer"
         >
           Shop More <ArrowRight className="w-4 h-4" />
         </Link>

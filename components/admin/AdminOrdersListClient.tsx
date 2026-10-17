@@ -227,7 +227,7 @@ export default function AdminOrdersListClient() {
   }, [orders, activeFilter, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#111111] text-white">
+    <div className="min-h-screen bg-black text-white">
       {/* Shared Admin Navigation Header with Orders & Inventory Tabs */}
       <AdminNavHeader
         onRefresh={() => {
@@ -317,7 +317,7 @@ export default function AdminOrdersListClient() {
                 onClick={() => setActiveFilter(chip.id)}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap border transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-white text-[#111111] border-white'
+                    ? 'bg-white text-black border-white'
                     : 'bg-[#1a1a1a] text-neutral-400 border-[#2a2a2a] hover:border-neutral-600 hover:text-neutral-200'
                 }`}
               >

@@ -151,16 +151,16 @@ export function ShopCatalog() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       
       {/* Breadcrumb Navigation */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[#9A9A9A] mb-4">
-        <Link href="/" className="hover:text-[#111111] transition-colors">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-text mb-4">
+        <Link href="/" className="hover:text-black transition-colors">
           Home
         </Link>
         <span>/</span>
-        <span className="text-[#111111] font-medium">Shop</span>
+        <span className="text-black font-medium">Shop</span>
         {activeCategory !== 'all' && (
           <>
             <span>/</span>
-            <span className="capitalize text-[#111111]">
+            <span className="capitalize text-black">
               {activeCategory === 'jeans' ? 'Jeans' : 'Graphic T-Shirts'}
             </span>
           </>
@@ -168,18 +168,23 @@ export function ShopCatalog() {
       </nav>
 
       {/* Page Title & Subtitle */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-[#E2E0DC]">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-black tracking-tight">
             Curated Drops
           </h1>
-          <p className="text-sm text-[#444444] mt-1.5 max-w-xl">
+          <p className="text-sm text-body mt-1.5 max-w-xl">
             One-of-one branded denim (Zara, Bershka, Calvin Klein, H&M, Old Navy) sanitized and checked in Karachi, alongside in-house anime graphic tees.
           </p>
         </div>
 
-        {/* Total results count */}
-        <div className="text-xs font-semibold text-[#444444] shrink-0 bg-white border border-[#E2E0DC] px-3.5 py-1.5 rounded-full self-start md:self-auto">
+        {/* Total results count — live region so filter changes are announced (F-70) */}
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="text-xs font-semibold text-body shrink-0 bg-white border border-border px-3.5 py-1.5 rounded-full self-start md:self-auto"
+        >
           {filteredProducts.length} {filteredProducts.length === 1 ? 'Piece' : 'Pieces'}
         </div>
       </div>
@@ -215,8 +220,8 @@ export function ShopCatalog() {
                 className={[
                   'px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer snap-start',
                   isSelected
-                    ? 'bg-[#111111] text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
-                    : 'bg-white text-[#444444] hover:text-[#111111] border border-[#E2E0DC] hover:border-[#111111]',
+                    ? 'bg-black text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
+                    : 'bg-white text-body hover:text-black border border-border hover:border-black',
                 ].join(' ')}
               >
                 {pill.label}
@@ -227,11 +232,40 @@ export function ShopCatalog() {
       </div>
 
       {/* ── Secondary Controls: Brand, Condition & Sort ── */}
-      <div className="bg-[#EDEBE8] rounded-[16px] p-3 sm:p-4 mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-card rounded-[16px] p-3 sm:p-4 mb-8 flex flex-wrap items-center justify-between gap-4">
         
-        {/* Left: Brand & Condition pills */}
+        {/* Left: Search + Brand & Condition pills */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-[#9A9A9A] font-semibold uppercase tracking-wider text-[10px] hidden sm:inline mr-1">
+          {/* Shop-local search (audit F-86) — keyed by the URL query so
+              external resets re-seed the input. */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const data = new FormData(e.currentTarget);
+              const q = String(data.get('q') ?? '').trim();
+              setParam('q', q);
+            }}
+            className="relative"
+          >
+            <label htmlFor="shop-search" className="sr-only">
+              Search the shop
+            </label>
+            <Search
+              aria-hidden="true"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-text pointer-events-none"
+            />
+            <input
+              id="shop-search"
+              key={searchQuery}
+              name="q"
+              type="search"
+              defaultValue={searchQuery}
+              placeholder="Search the shop..."
+              className="w-44 sm:w-52 bg-white text-black placeholder:text-muted-text border border-border focus:border-black rounded-full pl-9 pr-3.5 py-1.5"
+            />
+          </form>
+
+          <span className="text-muted-text font-semibold uppercase tracking-wider text-[10px] hidden sm:inline mr-1">
             Filter:
           </span>
 
@@ -253,8 +287,8 @@ export function ShopCatalog() {
 
           {/* Search Query Pill if searching */}
           {searchQuery && (
-            <span className="inline-flex items-center gap-1.5 bg-white text-[#111111] text-xs font-medium px-3 py-1.5 rounded-full border border-[#E2E0DC]">
-              <Search className="w-3 h-3 text-[#9A9A9A]" />
+            <span className="inline-flex items-center gap-1.5 bg-white text-black text-xs font-medium px-3 py-1.5 rounded-full border border-border">
+              <Search className="w-3 h-3 text-muted-text" />
               &quot;{searchQuery}&quot;
               <button
                 type="button"
@@ -272,7 +306,7 @@ export function ShopCatalog() {
             <button
               type="button"
               onClick={clearAllFilters}
-              className="text-xs text-[#8B2020] hover:underline font-semibold ml-2 cursor-pointer"
+              className="text-xs text-badge-sold-text hover:underline font-semibold ml-2 cursor-pointer"
             >
               Reset All
             </button>
@@ -294,6 +328,7 @@ export function ShopCatalog() {
       </div>
 
       {/* ── Product Grid ── */}
+      <h2 className="sr-only">Products</h2>
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {filteredProducts.map((product, idx) => (
@@ -306,33 +341,33 @@ export function ShopCatalog() {
         </div>
       ) : (
         /* ── Written Empty State (not a shrug) ── */
-        <div className="bg-[#EDEBE8] rounded-[20px] p-8 sm:p-12 text-center max-w-2xl mx-auto my-12 border border-[#E2E0DC]">
+        <div className="bg-card rounded-[20px] p-8 sm:p-12 text-center max-w-2xl mx-auto my-12 border border-border">
           <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <Sparkles className="w-6 h-6 text-[#111111]" />
+            <Sparkles className="w-6 h-6 text-black" />
           </div>
-          <h3 className="text-xl font-bold text-[#111111]">
+          <h2 className="text-xl font-bold text-black">
             No Pieces Match This Filter
-          </h3>
-          <p className="text-sm text-[#444444] mt-2 leading-relaxed">
+          </h2>
+          <p className="text-sm text-body mt-2 leading-relaxed">
             Every thrift piece at Thriv is a unique one-of-one item with a single size and stock of exactly 1. Because pieces don&apos;t restock, specific combinations of fit, brand, or size sell out quickly.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={clearAllFilters}
-              className="bg-[#111111] text-white text-xs font-semibold px-5 py-2.5 rounded-full hover:bg-black transition-colors"
+              className="bg-black text-white text-xs font-semibold px-5 py-2.5 rounded-full hover:bg-black transition-colors"
             >
               Reset Filters & View All
             </button>
             <Link
               href="/shop?category=jeans"
-              className="bg-white text-[#111111] border border-[#E2E0DC] text-xs font-semibold px-5 py-2.5 rounded-full hover:border-[#111111] transition-colors"
+              className="bg-white text-black border border-border text-xs font-semibold px-5 py-2.5 rounded-full hover:border-black transition-colors"
             >
               Browse All Jeans
             </Link>
             <Link
               href="/shop?category=graphic-tees"
-              className="bg-white text-[#111111] border border-[#E2E0DC] text-xs font-semibold px-5 py-2.5 rounded-full hover:border-[#111111] transition-colors"
+              className="bg-white text-black border border-border text-xs font-semibold px-5 py-2.5 rounded-full hover:border-black transition-colors"
             >
               Browse Graphic Tees
             </Link>
@@ -341,8 +376,8 @@ export function ShopCatalog() {
       )}
 
       {/* Bottom delivery reminder */}
-      <div className="mt-16 text-center border-t border-[#E2E0DC] pt-8">
-        <p className="text-xs text-[#9A9A9A]">
+      <div className="mt-16 text-center border-t border-border pt-8">
+        <p className="text-xs text-muted-text">
           Dispatched from Karachi · Flat Rs 200 delivery nationwide · All thrift items are 1-of-1 final sale
         </p>
       </div>

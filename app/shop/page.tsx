@@ -10,12 +10,12 @@ export const metadata: Metadata = {
 
 export default function ShopPage() {
   return (
-    <main className="min-h-screen bg-[#F5F3F0]">
+    <main className="min-h-screen bg-page">
       <Suspense
         fallback={
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-            <div className="inline-block w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-sm text-[#444444]">Loading collection...</p>
+            <div className="inline-block w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-sm text-body">Loading collection...</p>
           </div>
         }
       >
