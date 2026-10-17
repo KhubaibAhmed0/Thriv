@@ -1,10 +1,11 @@
 import type { MetadataRoute } from 'next';
 import { getAllProducts } from '@/lib/products-db';
+import { SITE_URL } from '@/lib/site-url';
 
 // Render on request so newly added pieces appear without a redeploy.
 export const dynamic = 'force-dynamic';
 
-const BASE_URL = 'https://thriv.pk';
+const BASE_URL = SITE_URL;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();

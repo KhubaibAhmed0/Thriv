@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { SITE_URL } from '@/lib/site-url';
 import { CartProvider } from '@/components/CartProvider';
 import { WishlistProvider } from '@/components/WishlistProvider';
 import { Header } from '@/components/Header';
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   },
   description:
     'Handpicked, disinfected thrift from H&M, Zara, Bershka, Calvin Klein, and Old Navy. One piece, one price, flat Rs 200 delivery across Pakistan.',
-  metadataBase: new URL('https://thriv.pk'),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     siteName: 'thriv',
     locale: 'en_PK',

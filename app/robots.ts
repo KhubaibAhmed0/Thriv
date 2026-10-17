@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site-url';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -9,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/admin', '/api', '/cart', '/checkout', '/order', '/wishlist'],
       },
     ],
-    sitemap: 'https://thriv.pk/sitemap.xml',
-    host: 'https://thriv.pk',
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }

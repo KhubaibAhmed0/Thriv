@@ -9,6 +9,7 @@
  */
 
 import { errorMessage } from '@/lib/errors';
+import { SITE_URL } from '@/lib/site-url';
 
 interface SendOrderEmailParams {
   orderNumber: string;
@@ -68,7 +69,7 @@ Please note: As stated during checkout, all sales are final for curated vintage 
 If you chose Bank Transfer, EasyPaisa, or JazzCash, please share your payment screenshot on WhatsApp to 0324-8188616 referencing your order number.
 
 Thriv Karachi
-https://thriv-five.vercel.app
+${SITE_URL}
 `.trim();
 
   try {
