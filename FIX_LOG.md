@@ -558,3 +558,28 @@ Operational notes:
 | Live TOTP → `aal2` cookie → `/admin` dashboard | ✓ reached `Orders \| Thriv Admin` |
 | Browser console | only the two expected 401s from the deliberate wrong-password + `mfa_setup` responses |
 | Temp admin + buckets + attempts rows | deleted — residue check: 0 probe users, 1 admins row (`admin@thriv.pk`) |
+
+---
+
+## Batch B8 — Admin MFA temporarily disabled (owner request, 2026-10-18)
+
+**Request:** after the first-sign-in enrolment friction (B7.1/B7.2), the owner asked to remove the two-factor step: *"remove the 2fa for now. just a simple login"*.
+
+**Implementation (one flag, fully reversible):** `lib/admin-mfa-config.ts` exports `ADMIN_MFA_ENABLED = false`.
+
+- `app/api/admin/auth/login/route.ts` (v2.1): while the flag is off, a correct password sets `__Host-thriv_admin_token` directly from the fresh password-grant session (aal1), clears any stale MFA ticket cookie, and returns `{success:true}` — no `mfa_required`/`mfa_setup`, no QR. The entire MFA branch below it is untouched.
+- `lib/admin-auth.ts`: the aal2 requirement applies only while the flag is on; the aal1 password-grant session is accepted (still requires a valid Supabase `getUser` identity, a matching `sub`, and an `admins` row).
+- Everything else stays active: Origin check, honeypot, Turnstile (fail closed), IP + account DB rate limits, email+IP failure throttle, admins membership, and all Phase 4–7 hardening (headers, uploads, order tokens).
+
+**Re-enabling** = set `ADMIN_MFA_ENABLED = true` and redeploy; no other change. The ticket, the `mfa/verify` route, and the QR enrolment UI are intact.
+
+**Verification:**
+
+| Check | Result |
+| :--- | :--- |
+| Local probe — temp no-factor admin; wrong password → 401; correct password → 200 + admin cookie (no ticket, no mfa flags); admin API 200 with cookie; 401 without; self-cleanup | ✓ **7/7** |
+| Same probe vs production (commit `da6d15e`, deploy READY) | ✓ **7/7** |
+| Real browser vs production: email + password → straight to `/admin` "Customer Orders" dashboard (no QR step), zero console errors | ✓ observed |
+| Temp admin + its buckets + attempts rows | deleted after both runs |
+
+**Attack-suite note:** checks #25, #27–#29, #37 (MFA flow) and the aal1-admin assertion in #32 are expected to **FAIL by design** while the flag is off; they pass again unchanged once MFA is re-enabled. The suite was not modified — the MFA-off path is covered by the two probes above instead.

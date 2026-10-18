@@ -4,6 +4,7 @@ This document contains the complete history, architectural decisions, credential
 
 > **Security note (2026-10-17):** A full audit was run and the fixes are logged in [`FIX_LOG.md`](./FIX_LOG.md). The admin password that used to live in this file has been rotated and must never be committed again; Supabase env keys are set in Vercel, not in the repo.
 > **Security note (2026-10-18):** Deep hardening pass (Batch B7) — admin TOTP MFA (aal2-only sessions), token-based order links, DB-backed rate limits, Turnstile, upload re-encoding, hardened headers. See `FIX_LOG.md` → Batch B7 for owner actions.
+> **Security note (2026-10-18, later):** Admin MFA is **temporarily disabled** on owner request — simple password login. Everything else (Turnstile, throttles, rate limits) stays active. Re-enable by flipping `ADMIN_MFA_ENABLED` in `lib/admin-mfa-config.ts` — see `FIX_LOG.md` → Batch B8.
 
 ---
 
@@ -28,7 +29,7 @@ This document contains the complete history, architectural decisions, credential
 | :--- | :--- |
 | **Live Storefront** | [https://thriv-five.vercel.app](https://thriv-five.vercel.app) |
 | **Admin Portal** | [https://thriv-five.vercel.app/admin](https://thriv-five.vercel.app/admin) |
-| **Admin Access** | Supabase Auth email + password (`admin@thriv.pk`) **+ TOTP MFA** (enforced since 2026-10-18; the first login walks through QR enrollment). The password is **not** stored in this repo (it leaked here once and was rotated 2026-10-17); it lives with the owner. |
+| **Admin Access** | Supabase Auth email + password (`admin@thriv.pk`). TOTP MFA is built and switchable (`lib/admin-mfa-config.ts`); it was **temporarily disabled** on 2026-10-18 on the owner's request, so login is currently password-only (see `FIX_LOG.md` → Batch B8). The password is **not** stored in this repo (it leaked here once and was rotated 2026-10-17); it lives with the owner. |
 | **GitHub Repository** | [https://github.com/KhubaibAhmed0/Thriv](https://github.com/KhubaibAhmed0/Thriv) (Branch: `main`) |
 | **GitHub User / Email** | `KhubaibAhmed0` / `khubbiahmed@gmail.com` |
 | **Vercel Account** | `khubaibvalopro-8402` (`khubaibvalopro@gmail.com`) |
@@ -50,7 +51,7 @@ This document contains the complete history, architectural decisions, credential
 - **UI & Styling**: React 19, Tailwind CSS v4, Lucide Icons
 - **Form & Data Validation**: Zod (`^4.6.5`)
 - **Database**: Supabase PostgreSQL (`@supabase/supabase-js`) — the database is the single source of truth for products and orders. Orders fail closed: an unconfigured or unavailable backend returns HTTP 503 instead of fabricating a confirmation (audit F-05); the static seed array only backs the local-dev catalogue.
-- **Admin Auth**: Supabase Auth (email + password) **+ TOTP MFA** — the cookie is only issued after an `aal2` session (signed 5-minute login ticket between steps) — plus an `admins` table membership check. All `/admin` pages are guarded by `proxy.ts`; all `/api/admin/*` routes self-guard via `lib/admin-auth.ts`. Both **fail closed**.
+- **Admin Auth**: Supabase Auth (email + password) plus an `admins` table membership check; TOTP MFA is switchable via `lib/admin-mfa-config.ts` (**currently disabled** — 2026-10-18 owner request; when enabled, the cookie is only issued after an `aal2` session, via a signed 5-minute login ticket between steps). All `/admin` pages are guarded by `proxy.ts`; all `/api/admin/*` routes self-guard via `lib/admin-auth.ts`. Both **fail closed**.
 - **Project Directory**: `C:\Users\InaequoSolutions-PC\OneDrive\Desktop\hasan bhai project\thriv`
 
 ---
@@ -123,7 +124,7 @@ During development, the following specific adjustments were made per user reques
   - Never re-introduce "allow when unconfigured" fallbacks in `lib/admin-auth.ts`, `proxy.ts`, or the admin API routes — they must fail closed.
   - `/api/admin/auth/me` must never echo the raw access token; the HttpOnly cookie is the only place the browser holds it.
   - `middleware.ts` is deprecated in Next 16 — page guards live in `proxy.ts`.
-  - Admin sessions must be **`aal2`**: never set the admin cookie before TOTP verification, and never trust `aal` claims from an unverified JWT (the `admins` lookup always goes through Supabase `getUser(token)` first).
+  - When MFA is enabled (`lib/admin-mfa-config.ts`), admin sessions must be **`aal2`**: never set the admin cookie before TOTP verification, and never trust `aal` claims from an unverified JWT (the `admins` lookup always goes through Supabase `getUser(token)` first).
   - Turnstile and the rate limiters **fail closed**: a missing/blank secret rejects the request; never add an "allow when unconfigured" path.
 
 ---
@@ -136,6 +137,6 @@ During development, the following specific adjustments were made per user reques
   1. Add `https://thriv-five.vercel.app` to the `@thriv.pk` Instagram bio.
   2. Connect a custom domain (e.g. `thriv.pk`) in Vercel Settings → Domains (optional).
   3. Supabase is already configured and live (project `Thriv`). For a *fresh* environment, apply `supabase/migrations/` in filename order (`20260920_initial_schema.sql` → `20260920_place_order_rpc.sql` → `20260921_products_storage.sql` → the 2026-10-17 audit migrations `20261017_b2_data_integrity.sql`, `20261017_b3_place_order_v3.sql`, `20261017_b4_data_truth.sql` → the 2026-10-18 hardening migration `20261018_security_hardening.sql`) and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in Vercel (Production **and** Preview). Never use or restore the deleted legacy `schema.sql`.
-  4. **Re-login to the admin portal and enroll TOTP** — the 2026-10-18 hardening enforces `aal2`; the first login shows the enrollment QR.
+  4. **Re-login to the admin portal** — currently password-only (MFA temporarily disabled, see `FIX_LOG.md` → Batch B8). When MFA is re-enabled, the first login shows the enrollment QR.
   5. **Paste real Cloudflare Turnstile keys** into Vercel to activate the bot check (test keys are in place until then).
   6. Read `FIX_LOG.md` for the full 2026-10 audit remediation log (what was fixed, live probes, and remaining recommendations).
