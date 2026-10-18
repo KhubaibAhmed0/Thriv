@@ -532,3 +532,29 @@ Operational notes:
 | Same no-factor probe vs production | ✓ **8/8** — deploy `de51d65` READY; password → `mfa_setup` + QR + manual key → live TOTP → `aal2` cookie → `/api/admin/orders` 200 |
 
 **Residue:** the probe creates and deletes its own throwaway admin (user + `admins` row + known `rate_limits`/`admin_login_attempts` buckets); suite teardown re-confirmed users removed 2/2.
+
+---
+
+## Batch B7.2 — Turnstile submit gating + honeypot hardening (2026-10-18, second live report)
+
+**Symptom:** after B7.1, the owner's retry showed *"Could not process this request. Please try again."* — the login route's generic 400 for an absent/failed Turnstile token (or a tripped honeypot).
+
+**Root cause:** the Sign In button was disabled only while `turnstileReady && !turnstileToken`, so it was **enabled during two real windows** — before the widget's first render, and during the widget remount that follows every failed attempt. A fast click in either window (typical with password-manager autofill) sent `turnstile_token: null`; the server failed closed with the generic 400; the error handler then remounted the widget again — clicking faster than the widget re-rendered looped there indefinitely. Secondary hardening: the honeypot input was only positioned off-screen (not `display:none`) and carried no password-manager ignore hints.
+
+**Fix (client-only; server fail-closed behaviour untouched):**
+- `TurnstileWidget` gains `onUnavailable()`, fired ONLY when no token can be expected without a page state change (missing site key / script blocked / widget error) — never during loading or remounting.
+- Admin login and checkout disable submit until a token exists OR `onUnavailable` fired; the "never a dead button" case for blocked scripts is preserved (submit re-enables, server rejects visibly).
+- Both honeypots moved to `display:none` + `data-lpignore` / `data-1p-ignore` / `data-bwignore`.
+
+**Verification (production, real browser — deploy `a4c08d1` READY):**
+
+| Check | Result |
+| :--- | :--- |
+| Fresh load: submit disabled until the token arrives (was enabled-at-load before) | ✓ observed disabled → enabled |
+| Wrong password: request reached the server **with a valid token**; 401 "Invalid login credentials" | ✓ observed |
+| During the post-error widget remount the button is DISABLED (previously enabled with null token — the loop) | ✓ observed |
+| Fresh token arrives → button re-enables (no dead button) | ✓ observed |
+| Correct password → **QR enrollment screen** (QR renders, manual key shown) | ✓ observed + screenshot |
+| Live TOTP → `aal2` cookie → `/admin` dashboard | ✓ reached `Orders \| Thriv Admin` |
+| Browser console | only the two expected 401s from the deliberate wrong-password + `mfa_setup` responses |
+| Temp admin + buckets + attempts rows | deleted — residue check: 0 probe users, 1 admins row (`admin@thriv.pk`) |
