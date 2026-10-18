@@ -26,14 +26,13 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileReady, setTurnstileReady] = useState(false);
+  const [turnstileUnavailable, setTurnstileUnavailable] = useState(false);
   const [widgetKey, setWidgetKey] = useState(0);
   // Honeypot — always empty for humans; bots helpfully fill it in.
   const [honeypot, setHoneypot] = useState('');
 
   const resetTurnstile = () => {
     setTurnstileToken(null);
-    setTurnstileReady(false);
     setWidgetKey((k) => k + 1);
   };
 
@@ -193,13 +192,18 @@ export default function AdminLoginPage() {
         {stage === 'password' ? (
           /* ── Step 1: password ── */
           <form onSubmit={handlePasswordSubmit} className="space-y-4 relative" noValidate>
-            {/* Honeypot — invisible to humans, tempting to bots */}
-            <div className="absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden" aria-hidden="true">
+            {/* Honeypot — display:none so browser autofill and password
+                managers never touch it (off-screen fields get filled);
+                naive bots that fill every input still get caught. */}
+            <div className="hidden" aria-hidden="true">
               <input
                 type="text"
                 name="website"
                 tabIndex={-1}
                 autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                data-bwignore="true"
                 value={honeypot}
                 onChange={(e) => setHoneypot(e.target.value)}
               />
@@ -240,15 +244,25 @@ export default function AdminLoginPage() {
             <TurnstileWidget
               key={widgetKey}
               theme="dark"
-              onToken={setTurnstileToken}
-              onReady={() => setTurnstileReady(true)}
+              onToken={(token) => {
+                setTurnstileToken(token);
+                // A real token means the widget works; clear any earlier
+                // unavailable state.
+                if (token) setTurnstileUnavailable(false);
+              }}
+              onUnavailable={() => setTurnstileUnavailable(true)}
               className="flex justify-center"
             />
 
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={loading || (turnstileReady && !turnstileToken)}
+                // Submit stays disabled until a token exists OR the widget is
+                // definitively unable to produce one (script blocked, key
+                // missing, widget error). Without the second clause a fast
+                // click during load/remount sent a token-less request and the
+                // server answered the generic 400 (live report, 2026-10-18).
+                disabled={loading || (!turnstileToken && !turnstileUnavailable)}
                 className="w-full py-3.5 text-sm font-bold bg-white text-black hover:bg-neutral-200 rounded-full flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (

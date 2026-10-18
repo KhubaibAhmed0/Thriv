@@ -114,13 +114,12 @@ export function CheckoutForm() {
   const [checkoutUnavailable, setCheckoutUnavailable] = useState(false);
   // Phase 4 (2026-10-18 brief): Turnstile + honeypot.
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileReady, setTurnstileReady] = useState(false);
+  const [turnstileUnavailable, setTurnstileUnavailable] = useState(false);
   const [widgetKey, setWidgetKey] = useState(0);
   const [honeypot, setHoneypot] = useState('');
 
   const resetTurnstile = () => {
     setTurnstileToken(null);
-    setTurnstileReady(false);
     setWidgetKey((k) => k + 1);
   };
 
@@ -430,13 +429,17 @@ export function CheckoutForm() {
       )}
 
       <form onSubmit={handleSubmit} noValidate className="relative">
-        {/* Honeypot — off-screen and aria-hidden; humans never see or fill it */}
-        <div className="absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden" aria-hidden="true">
+        {/* Honeypot — display:none so browser autofill and password managers
+            never touch it; naive bots that fill every input still get caught */}
+        <div className="hidden" aria-hidden="true">
           <input
             type="text"
             name="website"
             tabIndex={-1}
             autoComplete="off"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-bwignore="true"
             value={honeypot}
             onChange={(e) => setHoneypot(e.target.value)}
           />
@@ -713,19 +716,26 @@ export function CheckoutForm() {
                 <span>{formatPrice(total)}</span>
               </div>
 
-              {/* Turnstile widget (brief 4a) — remounts per attempt via key */}
+              {/* Turnstile widget (brief 4a) — remounts per attempt via key.
+                  Submit stays disabled until a token exists OR the widget is
+                  definitively unable to produce one (script blocked, key
+                  missing, widget error) — a fast click during load/remount
+                  must never send a token-less request. */}
               <TurnstileWidget
                 key={widgetKey}
                 theme="light"
-                onToken={setTurnstileToken}
-                onReady={() => setTurnstileReady(true)}
+                onToken={(token) => {
+                  setTurnstileToken(token);
+                  if (token) setTurnstileUnavailable(false);
+                }}
+                onUnavailable={() => setTurnstileUnavailable(true)}
                 className="flex justify-center mb-3"
               />
 
               {/* Place Order CTA */}
               <button
                 type="submit"
-                disabled={isSubmitting || (turnstileReady && !turnstileToken)}
+                disabled={isSubmitting || (!turnstileToken && !turnstileUnavailable)}
                 className="w-full inline-flex items-center justify-center gap-2 bg-black text-white font-bold text-sm py-4 rounded-full hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-[0.99] cursor-pointer"
               >
                 {isSubmitting ? (

@@ -11,10 +11,13 @@
  *  - `onToken(token)` fires with the token after a solve, and with `null` on
  *    expiry or error (the parent re-enables the widget — remount via `key` —
  *    and disables submit until a fresh token arrives).
- *  - `onReady()` fires only when the widget actually rendered. If the site
- *    key is missing or the script never loads, submit stays ENABLED and the
- *    server rejects the request (fail closed with a visible error) instead of
- *    a dead button.
+ *  - `onUnavailable()` fires only when no token can be expected without a page
+ *    state change (missing site key, script blocked/failed, widget error).
+ *    The parent then re-enables submit so the server can reject the request
+ *    (fail closed with a visible error) instead of a dead button. It is NOT
+ *    fired while the widget is merely loading or remounting — that gap must
+ *    keep submit disabled so a fast click cannot send a token-less request.
+ *  - `onReady()` fires only when the widget actually rendered.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -34,6 +37,7 @@ declare global {
 
 interface TurnstileWidgetProps {
   onToken: (token: string | null) => void;
+  onUnavailable?: () => void;
   onReady?: () => void;
   action?: string;
   theme?: 'light' | 'dark' | 'auto';
@@ -42,6 +46,7 @@ interface TurnstileWidgetProps {
 
 export function TurnstileWidget({
   onToken,
+  onUnavailable,
   onReady,
   action,
   theme = 'auto',
@@ -55,15 +60,21 @@ export function TurnstileWidget({
   // Keep the latest callbacks without re-running the render effect.
   const onTokenRef = useRef(onToken);
   const onReadyRef = useRef(onReady);
+  const onUnavailableRef = useRef(onUnavailable);
   useEffect(() => {
     onTokenRef.current = onToken;
     onReadyRef.current = onReady;
-  }, [onToken, onReady]);
+    onUnavailableRef.current = onUnavailable;
+  }, [onToken, onReady, onUnavailable]);
 
   // No site key in the build: clear any token expectation once — never during
-  // render (review fix).
+  // render (review fix). No widget can ever arrive, so submit must stay
+  // enabled for the server to reject the token-less request visibly.
   useEffect(() => {
-    if (!siteKey) onTokenRef.current(null);
+    if (!siteKey) {
+      onTokenRef.current(null);
+      onUnavailableRef.current?.();
+    }
   }, [siteKey]);
 
   useEffect(() => {
@@ -78,8 +89,15 @@ export function TurnstileWidget({
       theme,
       ...(action ? { action } : {}),
       callback: (token: string) => onTokenRef.current(token),
+      // Token expired (5 min): a fresh token is normally issued by the
+      // widget's automatic refresh, and the parent keeps submit disabled
+      // until it arrives. If the refresh fails outright, error-callback
+      // fires and submit is re-enabled for a visible server rejection.
       'expired-callback': () => onTokenRef.current(null),
-      'error-callback': () => onTokenRef.current(null),
+      'error-callback': () => {
+        onTokenRef.current(null);
+        onUnavailableRef.current?.();
+      },
     });
     onReadyRef.current?.();
 
@@ -107,9 +125,12 @@ export function TurnstileWidget({
         // navigation), so a cached script never leaves the widget dormant.
         onReady={() => setScriptLoaded(true)}
         onError={() => {
-          // Blocked or failed to load — leave submit enabled; the server
-          // rejects the request (fail closed) and the user sees the error.
+          // Blocked or failed to load. No token can ever arrive, so let the
+          // parent re-enable submit: the server rejects the token-less
+          // request (fail closed) and the user sees a visible error instead
+          // of a dead button.
           onTokenRef.current(null);
+          onUnavailableRef.current?.();
         }}
       />
       <div ref={containerRef} className={className} />
