@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
-import { sendOrderConfirmationEmail, isEmailConfigured } from '@/lib/email';
+import { sendOrderConfirmationEmail, canDeliverCustomerEmail } from '@/lib/email';
 import {
   clientIp,
   dbRateLimit,
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
   if (result.idempotent === true) {
     securityLog('order.replay', { ip: clientIp(req) });
     return NextResponse.json(
-      { idempotent: true, email_enabled: isEmailConfigured() },
+      { idempotent: true, email_enabled: canDeliverCustomerEmail() },
       { status: 201, headers: NO_STORE_HEADERS }
     );
   }
@@ -306,7 +306,7 @@ export async function POST(req: NextRequest) {
       public_token: publicToken,
       total_pkr: orderTotal,
       idempotent: false,
-      email_enabled: isEmailConfigured(),
+      email_enabled: canDeliverCustomerEmail(),
     },
     { status: 201, headers: NO_STORE_HEADERS }
   );

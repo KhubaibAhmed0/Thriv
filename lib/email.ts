@@ -33,6 +33,19 @@ export function isEmailConfigured(): boolean {
 }
 
 /**
+ * True when customer-facing email delivery is actually possible: the API key
+ * is present AND a sending address on a verified domain is configured
+ * (`RESEND_FROM_EMAIL`). Until a verified domain exists, Resend rejects every
+ * send to a customer address (only the account's own inbox works), so UI copy
+ * must not promise a receipt — `isEmailConfigured` alone is not enough for
+ * that promise (audit F-26). Sends are still attempted without it and any
+ * rejection is logged.
+ */
+export function canDeliverCustomerEmail(): boolean {
+  return isEmailConfigured() && Boolean(process.env.RESEND_FROM_EMAIL);
+}
+
+/**
  * Audit F-82: the confirmation email is plain text, so HTML escaping is
  * not the concern — newline/control-character spoofing is. Customer-supplied
  * strings (name, address) and catalogue strings are flattened to a single

@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
-import { isEmailConfigured } from '@/lib/email';
+import { canDeliverCustomerEmail } from '@/lib/email';
 import { dbRateLimit, NO_STORE_HEADERS, requestId } from '@/lib/api-guard';
 import { log } from '@/lib/log';
 import { securityLog } from '@/lib/security-log';
@@ -113,7 +113,7 @@ export async function GET(
           ),
         },
         // Lets the confirmation page phrase email claims honestly (F-26).
-        email_enabled: isEmailConfigured(),
+        email_enabled: canDeliverCustomerEmail(),
       },
       { headers: NO_STORE_HEADERS }
     );
