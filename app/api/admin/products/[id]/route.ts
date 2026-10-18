@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { UpdateProductSchema } from '@/lib/admin-product-schema';
+import { originAllowed, requestId } from '@/lib/api-guard';
+import { writeAudit } from '@/lib/audit';
 import { securityLog } from '@/lib/security-log';
+import { log } from '@/lib/log';
 
 /** Public URL prefix for the `products` bucket. */
 const PUBLIC_MARKER = '/storage/v1/object/public/products/';
@@ -33,9 +36,16 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rid = requestId();
   const auth = await verifyAdminRequest(req);
   if (!auth.authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Phase 4: state-changing route — reject cross-origin browser calls.
+  if (!originAllowed(req)) {
+    securityLog('admin.origin_blocked', { route: 'products.update' });
+    return NextResponse.json({ error: 'Request blocked.' }, { status: 403 });
   }
 
   if (!isServiceConfigured()) {
@@ -99,8 +109,11 @@ export async function PATCH(
         .maybeSingle();
 
       if (productError) {
-        console.error('[/api/admin/products/[id]] lookup failed:', productError.message);
-        return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+        log.error('[/api/admin/products/[id]] lookup failed:', productError.message);
+        return NextResponse.json(
+          { error: 'Failed to update product', request_id: rid },
+          { status: 500 }
+        );
       }
       if (!product) {
         return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -122,8 +135,11 @@ export async function PATCH(
 
     if (error) {
       // F-41: raw detail to the server log only.
-      console.error('[/api/admin/products/[id]] DB update error:', error.message);
-      return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+      log.error('[/api/admin/products/[id]] DB update error:', error.message);
+      return NextResponse.json(
+        { error: 'Failed to update product', request_id: rid },
+        { status: 500 }
+      );
     }
 
     securityLog('admin.product.update', {
@@ -132,13 +148,22 @@ export async function PATCH(
       fields: Object.keys(allowedUpdates),
     });
 
+    await writeAudit({
+      actorId: auth.user?.id ?? null,
+      action: 'product.update',
+      entity: 'products',
+      entityId: id,
+      before: null,
+      after: allowedUpdates,
+    });
+
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
-    console.error(
-      '[/api/admin/products/[id]] Unexpected error:',
-      err instanceof Error ? err.message : err
+    log.error('[/api/admin/products/[id]] Unexpected error:', err);
+    return NextResponse.json(
+      { error: 'Failed to update product', request_id: rid },
+      { status: 500 }
     );
-    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
   }
 }
 
@@ -146,9 +171,16 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rid = requestId();
   const auth = await verifyAdminRequest(req);
   if (!auth.authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Phase 4: state-changing route — reject cross-origin browser calls.
+  if (!originAllowed(req)) {
+    securityLog('admin.origin_blocked', { route: 'products.delete' });
+    return NextResponse.json({ error: 'Request blocked.' }, { status: 403 });
   }
 
   if (!isServiceConfigured()) {
@@ -172,8 +204,11 @@ export async function DELETE(
       .maybeSingle();
 
     if (fetchError) {
-      console.error('[/api/admin/products/[id]] lookup failed:', fetchError.message);
-      return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+      log.error('[/api/admin/products/[id]] lookup failed:', fetchError.message);
+      return NextResponse.json(
+        { error: 'Failed to delete product', request_id: rid },
+        { status: 500 }
+      );
     }
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -182,8 +217,11 @@ export async function DELETE(
     const { error } = await serviceClient.from('products').delete().eq('id', id);
 
     if (error) {
-      console.error('[/api/admin/products/[id]] DB delete error:', error.message);
-      return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+      log.error('[/api/admin/products/[id]] DB delete error:', error.message);
+      return NextResponse.json(
+        { error: 'Failed to delete product', request_id: rid },
+        { status: 500 }
+      );
     }
 
     // Storage cleanup — best effort, reported in the response. A leftover
@@ -196,7 +234,7 @@ export async function DELETE(
         .from('products')
         .remove(paths);
       if (removeError) {
-        console.error('[/api/admin/products/[id]] storage cleanup failed:', removeError.message);
+        log.error('[/api/admin/products/[id]] storage cleanup failed:', removeError.message);
         failed = paths.length;
       } else {
         removed = removedData?.length ?? paths.length;
@@ -212,16 +250,25 @@ export async function DELETE(
       objectsFailed: failed,
     });
 
+    await writeAudit({
+      actorId: auth.user?.id ?? null,
+      action: 'product.delete',
+      entity: 'products',
+      entityId: id,
+      before: { slug: product.slug, objects: paths.length },
+      after: null,
+    });
+
     return NextResponse.json({
       success: true,
       deletedId: id,
       storage: { removed, failed },
     });
   } catch (err) {
-    console.error(
-      '[/api/admin/products/[id]] Unexpected error:',
-      err instanceof Error ? err.message : err
+    log.error('[/api/admin/products/[id]] Unexpected error:', err);
+    return NextResponse.json(
+      { error: 'Failed to delete product', request_id: rid },
+      { status: 500 }
     );
-    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
 }

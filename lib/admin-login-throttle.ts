@@ -12,6 +12,7 @@
  */
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { errorForLog, securityLog } from '@/lib/security-log';
+import { log } from '@/lib/log';
 
 export const LOGIN_THROTTLE_WINDOW_MS = 15 * 60 * 1000;
 export const LOGIN_THROTTLE_MAX_FAILURES = 5;
@@ -39,7 +40,7 @@ export async function countRecentLoginFailures(
       .gte('attempted_at', since);
 
     if (error) {
-      console.error('[login-throttle] count failed:', error.message);
+      log.error('[login-throttle] count failed:', error.message);
       return null;
     }
     return count ?? 0;
@@ -56,7 +57,7 @@ export async function recordLoginFailure(email: string, ip: string): Promise<voi
     const service = getServiceClient();
     const { error } = await service.from(TABLE).insert({ email, ip });
     if (error) {
-      console.error('[login-throttle] record failed:', error.message);
+      log.error('[login-throttle] record failed:', error.message);
       return;
     }
     const cutoff = new Date(Date.now() - LOGIN_ATTEMPT_RETENTION_MS).toISOString();

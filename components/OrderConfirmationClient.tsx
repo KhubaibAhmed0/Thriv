@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle, MessageCircle, ShoppingBag } from 'lucide-react';
+import { CheckCircle, AlertCircle, MessageCircle, ShoppingBag } from 'lucide-react';
 import { formatPrice } from '@/lib/formatPrice';
 import { ENUM_TO_CLIENT, paymentLabel } from '@/lib/orderLabels';
 import type { CartItem } from '@/types';
@@ -51,6 +51,8 @@ interface ServerOrder {
 
 /** Unified view model. PII fields exist only when the local snapshot does. */
 interface ViewOrder {
+  /** Human-readable order number (THR-xxxxx) — display only, never a key. */
+  orderNumber?: string;
   items: { name: string; brand?: string | null; size?: string | null; quantity: number; unitPrice: number }[];
   subtotal: number;
   deliveryFee: number;
@@ -69,6 +71,7 @@ interface ViewOrder {
 
 function snapshotToView(snap: OrderData): ViewOrder {
   return {
+    orderNumber: snap.orderNumber,
     customerName: snap.customerName,
     email: snap.email,
     whatsapp: snap.whatsapp,
@@ -92,6 +95,7 @@ function snapshotToView(snap: OrderData): ViewOrder {
 
 function serverToView(server: ServerOrder): ViewOrder {
   return {
+    orderNumber: server.order_number,
     paymentMethod: ENUM_TO_CLIENT[server.payment_method] ?? server.payment_method,
     subtotal: server.subtotal_pkr,
     deliveryFee: server.delivery_fee_pkr,
@@ -109,10 +113,11 @@ function serverToView(server: ServerOrder): ViewOrder {
 }
 
 interface OrderConfirmationClientProps {
-  orderNumber: string;
+  /** Unguessable confirmation key (UUID) returned by the checkout API. */
+  publicToken: string;
 }
 
-export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClientProps) {
+export function OrderConfirmationClient({ publicToken }: OrderConfirmationClientProps) {
   const [snapshotView, setSnapshotView] = useState<ViewOrder | null>(null);
   const [serverView, setServerView] = useState<ViewOrder | null>(null);
   const [serverDone, setServerDone] = useState(false);
@@ -130,7 +135,23 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
     // 1. Local snapshot (fast path) — ignored when older than the TTL so a
     //    shared device doesn't leak stale order details (audit F-58).
     try {
-      const key = `thriv_order_${orderNumber}`;
+      // Shared devices: sweep stale snapshots from earlier checkouts so old
+      // order keys never linger indefinitely (the TTL applies to every key).
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith('thriv_order_')) continue;
+        try {
+          const parsed = JSON.parse(localStorage.getItem(k) ?? '');
+          const savedAt = parsed?.savedAt ? Date.parse(parsed.savedAt) : NaN;
+          if (!Number.isFinite(savedAt) || Date.now() - savedAt > SNAPSHOT_TTL_MS) {
+            localStorage.removeItem(k);
+          }
+        } catch {
+          localStorage.removeItem(k);
+        }
+      }
+
+      const key = `thriv_order_${publicToken}`;
       const stored = localStorage.getItem(key);
       if (stored) {
         const parsed: OrderData = JSON.parse(stored);
@@ -149,7 +170,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
     }
 
     // 2. Server truth — authoritative items/totals, works cross-device.
-    fetch(`/api/orders/${encodeURIComponent(orderNumber)}`)
+    fetch(`/api/orders/${encodeURIComponent(publicToken)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled && data?.order) {
@@ -167,7 +188,7 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
     return () => {
       cancelled = true;
     };
-  }, [orderNumber]);
+  }, [publicToken]);
 
   // Server data wins for items/money/payment; PII comes only from the
   // snapshot (the API intentionally returns none).
@@ -175,9 +196,16 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
     ? { ...(snapshotView ?? {}), ...serverView }
     : snapshotView;
 
+  // The order number is display data now — the URL only ever carries the
+  // token, and neither the snapshot nor the API is guaranteed to have
+  // resolved it yet.
+  const displayOrderNumber = view?.orderNumber ?? null;
+
   const whatsappNumber = '923248188616';
   const whatsappMessage = encodeURIComponent(
-    `Hi Thriv! I just placed an order. My order number is ${orderNumber}. Please confirm.`
+    displayOrderNumber
+      ? `Hi Thriv! I just placed an order. My order number is ${displayOrderNumber}. Please confirm.`
+      : 'Hi Thriv! I just placed an order. Please confirm.'
   );
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
@@ -188,6 +216,35 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Nothing resolved: not in this browser, and the server lookup found no
+  // order (unknown/incomplete link, or the lookup failed). Never render
+  // success copy for an order we cannot confirm (review fix).
+  if (!view) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 sm:py-16 text-center">
+        <div className="w-16 h-16 rounded-full bg-card border border-border flex items-center justify-center mx-auto mb-5">
+          <AlertCircle className="w-8 h-8 text-body" />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-black leading-tight">
+          We couldn&apos;t find this order
+        </h1>
+        <p className="text-sm text-body mt-3 leading-relaxed max-w-md mx-auto">
+          This link may be incomplete, or the lookup is temporarily unavailable.
+          Message us on WhatsApp with your name and we&apos;ll find your order manually.
+        </p>
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 inline-flex items-center justify-center gap-2 bg-black text-white font-bold text-sm px-8 py-4 rounded-full hover:bg-black transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+        >
+          <MessageCircle className="w-4 h-4" />
+          Chat on WhatsApp
+        </a>
       </div>
     );
   }
@@ -206,11 +263,13 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
         <h1 className="text-3xl sm:text-4xl font-extrabold text-black leading-tight">
           Thank You{view?.customerName ? `, ${view.customerName.split(' ')[0]}` : ''}!
         </h1>
-        <div className="mt-3 inline-block bg-card border border-border px-4 py-2 rounded-full">
-          <p className="text-sm font-mono font-bold text-black tracking-wider">
-            Order: {orderNumber}
-          </p>
-        </div>
+        {displayOrderNumber && (
+          <div className="mt-3 inline-block bg-card border border-border px-4 py-2 rounded-full">
+            <p className="text-sm font-mono font-bold text-black tracking-wider">
+              Order: {displayOrderNumber}
+            </p>
+          </div>
+        )}
         <p className="text-sm text-body mt-3 leading-relaxed">
           {view?.email && emailEnabled
             ? `A receipt is on its way to ${view.email}, and we'll confirm on WhatsApp shortly.`
@@ -391,10 +450,12 @@ export function OrderConfirmationClient({ orderNumber }: OrderConfirmationClient
       </div>
 
       {/* Order number repeat for easy copy */}
-      <p className="text-center text-xs text-muted-text mt-6">
-        Keep this order number:{' '}
-        <span className="font-mono font-bold text-black">{orderNumber}</span>
-      </p>
+      {displayOrderNumber && (
+        <p className="text-center text-xs text-muted-text mt-6">
+          Keep this order number:{' '}
+          <span className="font-mono font-bold text-black">{displayOrderNumber}</span>
+        </p>
+      )}
 
     </div>
   );

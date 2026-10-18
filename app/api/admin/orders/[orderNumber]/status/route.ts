@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
+import { originAllowed, requestId } from '@/lib/api-guard';
+import { writeAudit } from '@/lib/audit';
 import { securityLog } from '@/lib/security-log';
+import { log } from '@/lib/log';
 
 const UpdateStatusSchema = z.object({
   status: z
@@ -20,10 +23,17 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ orderNumber: string }> }
 ) {
+  const rid = requestId();
   try {
     const auth = await verifyAdminRequest(req);
     if (!auth.authorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Phase 4: state-changing routes reject cross-origin browser calls.
+    if (!originAllowed(req)) {
+      securityLog('admin.origin_blocked', { route: 'orders.status' });
+      return NextResponse.json({ error: 'Request blocked.' }, { status: 403 });
     }
 
     const { orderNumber } = await params;
@@ -99,8 +109,11 @@ export async function PATCH(
           // Transition guard raised by our own RPC — message is curated.
           return NextResponse.json({ error: rpcError.message }, { status: 409 });
         }
-        console.error('[/api/admin/orders/.../status] update_order_status failed:', rpcError);
-        return NextResponse.json({ error: 'Status update failed' }, { status: 500 });
+        log.error('[/api/admin/orders/.../status] update_order_status failed:', rpcError);
+        return NextResponse.json(
+          { error: 'Status update failed', request_id: rid },
+          { status: 500 }
+        );
       }
 
       securityLog('admin.order.status', {
@@ -108,6 +121,15 @@ export async function PATCH(
         orderNumber,
         from: currentOrder.status,
         to: status,
+      });
+
+      await writeAudit({
+        actorId: auth.user?.id ?? null,
+        action: 'order.status',
+        entity: 'orders',
+        entityId: currentOrder.id,
+        before: { status: currentOrder.status },
+        after: { status },
       });
     }
 
@@ -119,8 +141,11 @@ export async function PATCH(
         .eq('id', currentOrder.id);
 
       if (payError) {
-        console.error('[/api/admin/orders/.../status] Payment update failed:', payError);
-        return NextResponse.json({ error: 'Payment update failed' }, { status: 500 });
+        log.error('[/api/admin/orders/.../status] Payment update failed:', payError);
+        return NextResponse.json(
+          { error: 'Payment update failed', request_id: rid },
+          { status: 500 }
+        );
       }
 
       securityLog('admin.order.payment', {
@@ -128,6 +153,15 @@ export async function PATCH(
         orderNumber,
         from: currentOrder.payment_status,
         to: payment_status,
+      });
+
+      await writeAudit({
+        actorId: auth.user?.id ?? null,
+        action: 'order.payment_status',
+        entity: 'orders',
+        entityId: currentOrder.id,
+        before: { payment_status: currentOrder.payment_status },
+        after: { payment_status },
       });
     }
 
@@ -147,14 +181,26 @@ export async function PATCH(
         .eq('id', currentOrder.id);
 
       if (dispatchError) {
-        console.error('[/api/admin/orders/.../status] Dispatch update failed:', dispatchError);
-        return NextResponse.json({ error: 'Dispatch update failed' }, { status: 500 });
+        log.error('[/api/admin/orders/.../status] Dispatch update failed:', dispatchError);
+        return NextResponse.json(
+          { error: 'Dispatch update failed', request_id: rid },
+          { status: 500 }
+        );
       }
 
       securityLog('admin.order.dispatch', {
         adminId: auth.user?.id,
         orderNumber,
         fields: Object.keys(dispatchUpdates),
+      });
+
+      await writeAudit({
+        actorId: auth.user?.id ?? null,
+        action: 'order.dispatch',
+        entity: 'orders',
+        entityId: currentOrder.id,
+        before: null,
+        after: dispatchUpdates,
       });
     }
 
@@ -169,7 +215,10 @@ export async function PATCH(
       ...(courier !== undefined ? { courier: dispatchUpdates.courier } : {}),
     });
   } catch (err) {
-    console.error('[/api/admin/orders/.../status] Error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    log.error('[/api/admin/orders/.../status] Error:', err);
+    return NextResponse.json(
+      { error: 'Internal server error', request_id: rid },
+      { status: 500 }
+    );
   }
 }

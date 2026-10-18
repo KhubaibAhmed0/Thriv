@@ -30,16 +30,18 @@ const isDev = process.env.NODE_ENV !== "production";
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // Turnstile's loader script runs from Cloudflare (brief 4a) — pinned to
+  // that exact origin; 'unsafe-inline' is Next's bootstrap requirement.
+  `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${supabaseHttps}`,
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseHttps} ${supabaseWss}`,
   "media-src 'self'",
-  // Same-origin frames only (internal tooling); cross-origin framing is
-  // the clickjacking vector and stays blocked.
-  "frame-src 'self'",
-  "frame-ancestors 'self'",
+  // Same-origin frames + the Turnstile challenge iframe (Cloudflare).
+  "frame-src 'self' https://challenges.cloudflare.com",
+  // Brief 6: nothing may frame this app — storefront or admin.
+  "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -49,9 +51,10 @@ const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  // SAMEORIGIN (not DENY) so same-origin embedding keeps working; external
-  // sites cannot frame the storefront. Mirrors frame-ancestors 'self'.
-  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  // DENY mirrors frame-ancestors 'none' (brief 6): no page in this app is
+  // ever framed, and legacy browsers without CSP support get the same
+  // guarantee.
+  { key: "X-Frame-Options", value: "DENY" },
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=(), browsing-topics=()",
@@ -75,6 +78,21 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+      {
+        // Admin surfaces are never indexed (brief 6).
+        source: "/admin/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/api/admin/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        // Order-confirmation URLs carry the bearer token — never indexable,
+        // including for non-HTML clients that ignore <meta robots>.
+        source: "/order/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
     ];
   },

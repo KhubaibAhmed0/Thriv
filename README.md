@@ -37,8 +37,8 @@ Thriv is a Karachi-based curated thrift store specializing in 1-of-1 branded den
 * `/faq` — CSS-only accordion covering sizing, delivery, payment methods, and returns.
 * `/cart` — Cart management with 1-of-1 thrift enforcement and delivery fee calculation.
 * `/checkout` — Checkout form with Pakistani WhatsApp number validation, payment selection, and mandatory final sale policy consent.
-* `/order/[orderNumber]` — Order confirmation with step-by-step next steps and direct WhatsApp confirmation deep link.
-* `/api/orders` — Orders endpoint generating `THR-YYYYMMDD-XXXXXX` order references.
+* `/order/[publicToken]` — Order confirmation with step-by-step next steps and direct WhatsApp confirmation deep link. The path segment is the unguessable confirmation token returned by checkout; sequential order numbers 404 here by design.
+* `/api/orders` — Checkout endpoint; returns the display `order_number` plus the unguessable `public_token` used for confirmation lookups.
 
 ---
 

@@ -23,11 +23,20 @@ export async function proxy(req: NextRequest) {
   const { authorized } = await verifyAdminRequest(req);
 
   if (!authorized) {
-    // Drop a dead/forged cookie so the login page starts clean.
+    // Drop a dead/forged cookie so the login page starts clean. Explicit
+    // Secure clear — browsers reject a `__Host-` delete without it.
     const response = isLoginPage
       ? NextResponse.next()
       : NextResponse.redirect(new URL('/admin/login', req.url));
-    response.cookies.delete(ADMIN_COOKIE_NAME);
+    response.cookies.set({
+      name: ADMIN_COOKIE_NAME,
+      value: '',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
     return response;
   }
 

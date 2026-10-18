@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import {
@@ -8,7 +10,10 @@ import {
   MAX_UPLOAD_BYTES,
   isRealImageFile,
 } from '@/lib/admin-product-schema';
+import { originAllowed, requestId } from '@/lib/api-guard';
+import { writeAudit } from '@/lib/audit';
 import { securityLog } from '@/lib/security-log';
+import { log } from '@/lib/log';
 
 function generateSlug(name: string): string {
   const base = name
@@ -55,8 +60,11 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       // F-41: raw detail goes to the server log only.
-      console.error('[/api/admin/products] DB error:', error.message);
-      return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+      log.error('[/api/admin/products] DB error:', error.message);
+      return NextResponse.json(
+        { error: 'Failed to fetch products', request_id: requestId() },
+        { status: 500 }
+      );
     }
 
     const rows = products ?? [];
@@ -69,15 +77,25 @@ export async function GET(req: NextRequest) {
       has_more: total > offset + rows.length,
     });
   } catch (err) {
-    console.error('[/api/admin/products] Unexpected error:', err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+    log.error('[/api/admin/products] Unexpected error:', err);
+    return NextResponse.json(
+      { error: 'Failed to fetch products', request_id: requestId() },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
+  const rid = requestId();
   const auth = await verifyAdminRequest(req);
   if (!auth.authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Phase 4: state-changing route — reject cross-origin browser calls.
+  if (!originAllowed(req)) {
+    securityLog('admin.origin_blocked', { route: 'products.create' });
+    return NextResponse.json({ error: 'Request blocked.' }, { status: 403 });
   }
 
   if (!isServiceConfigured()) {
@@ -215,26 +233,46 @@ export async function POST(req: NextRequest) {
     const slug = generateSlug(input.name);
 
     // ── Upload to storage; abort + clean up on any failure (F-53) ────
+    // Phase 5 (2026-10-18 brief): every image is decoded and re-encoded
+    // through sharp — that rejects non-image payloads, strips EXIF and any
+    // embedded junk, normalizes orientation, and converts to WebP, all
+    // before the bytes reach the bucket. Object paths are pure random
+    // UUIDs: nothing user-controlled (filename/slug) touches the storage
+    // path (brief 5e).
+    const batchId = randomUUID();
     const uploadedPaths: string[] = [];
     let uploadFailedFor: string | null = null;
 
-    for (let i = 0; i < validatedFiles.length; i++) {
-      const file = validatedFiles[i];
-      const ext =
-        file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-      const fileName = `${slug}-${i + 1}-${Date.now()}.${ext}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-
-      const { error: uploadError } = await serviceClient.storage
-        .from('products')
-        .upload(fileName, buffer, { contentType: file.type, upsert: true });
-
-      if (uploadError) {
-        console.error(`[uploadError] Failed uploading ${fileName}:`, uploadError.message);
+    for (const file of validatedFiles) {
+      let encoded: Buffer;
+      try {
+        const inputBuffer = Buffer.from(await file.arrayBuffer());
+        encoded = await sharp(inputBuffer)
+          .rotate() // honour EXIF orientation *before* metadata is dropped
+          .webp({ quality: 82 })
+          .toBuffer();
+      } catch (encodeError) {
+        log.warn('[/api/admin/products] sharp re-encode failed:', encodeError);
         uploadFailedFor = file.name;
         break;
       }
-      uploadedPaths.push(fileName);
+
+      const objectPath = `${batchId}/${randomUUID()}.webp`;
+      const { error: uploadError } = await serviceClient.storage
+        .from('products')
+        .upload(objectPath, encoded, {
+          contentType: 'image/webp',
+          // UUID paths are immutable — cache them forever.
+          cacheControl: '31536000',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        log.error(`[/api/admin/products] Failed uploading ${objectPath}:`, uploadError.message);
+        uploadFailedFor = file.name;
+        break;
+      }
+      uploadedPaths.push(objectPath);
     }
 
     if (uploadFailedFor) {
@@ -244,7 +282,7 @@ export async function POST(req: NextRequest) {
           .from('products')
           .remove(uploadedPaths);
         if (cleanupError) {
-          console.error('[uploadError] cleanup remove failed:', cleanupError.message);
+          log.error('[/api/admin/products] cleanup remove failed:', cleanupError.message);
         }
       }
       securityLog('admin.product.upload_failed', {
@@ -254,7 +292,11 @@ export async function POST(req: NextRequest) {
         cleaned: uploadedPaths.length,
       });
       return NextResponse.json(
-        { error: 'Photo upload failed. Nothing was saved — please retry.', code: 'UPLOAD_FAILED' },
+        {
+          error: 'Photo upload failed. Nothing was saved — please retry.',
+          code: 'UPLOAD_FAILED',
+          request_id: rid,
+        },
         { status: 502 }
       );
     }
@@ -289,17 +331,21 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       // F-41: log the raw detail; the client gets a fixed message.
-      console.error('[/api/admin/products] DB insert error:', insertError.message);
+      log.error('[/api/admin/products] DB insert error:', insertError.message);
       if (uploadedPaths.length > 0) {
         const { error: cleanupError } = await serviceClient.storage
           .from('products')
           .remove(uploadedPaths);
         if (cleanupError) {
-          console.error('[products] insert-failure cleanup failed:', cleanupError.message);
+          log.error('[/api/admin/products] insert-failure cleanup failed:', cleanupError.message);
         }
       }
       return NextResponse.json(
-        { error: 'Failed to save the product. Nothing was changed — please retry.', code: 'INSERT_FAILED' },
+        {
+          error: 'Failed to save the product. Nothing was changed — please retry.',
+          code: 'INSERT_FAILED',
+          request_id: rid,
+        },
         { status: 500 }
       );
     }
@@ -311,11 +357,26 @@ export async function POST(req: NextRequest) {
       isMerch: input.isMerch,
     });
 
+    await writeAudit({
+      actorId: auth.user?.id ?? null,
+      action: 'product.create',
+      entity: 'products',
+      entityId: (newProduct as { id?: string } | null)?.id ?? null,
+      before: null,
+      after: {
+        slug,
+        name: input.name,
+        price_pkr: input.price,
+        stock: input.stock,
+        photos: uploadedPaths.length,
+      },
+    });
+
     return NextResponse.json({ success: true, product: newProduct });
   } catch (err) {
-    console.error('[/api/admin/products] Unexpected error:', err instanceof Error ? err.message : err);
+    log.error('[/api/admin/products] Unexpected error:', err);
     return NextResponse.json(
-      { error: 'Failed to create product' },
+      { error: 'Failed to create product', request_id: rid },
       { status: 500 }
     );
   }

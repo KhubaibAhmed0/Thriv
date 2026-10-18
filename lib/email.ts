@@ -9,6 +9,7 @@
  */
 
 import { errorMessage } from '@/lib/errors';
+import { log } from '@/lib/log';
 import { SITE_URL } from '@/lib/site-url';
 
 interface SendOrderEmailParams {
@@ -56,8 +57,9 @@ export async function sendOrderConfirmationEmail(params: SendOrderEmailParams): 
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
   if (!isEmailConfigured()) {
-    console.warn(
-      `[Resend STUB] RESEND_API_KEY is not set in environment variables. Order confirmation email for ${params.orderNumber} to ${params.customerEmail} was skipped.`
+    // Order number only — never the customer's email address (Phase 6f).
+    log.warn(
+      `[email] Resend stub: confirmation for ${params.orderNumber} skipped (RESEND_API_KEY not set).`
     );
     return { success: false, stub: true };
   }
@@ -112,17 +114,17 @@ ${SITE_URL}
     const resData = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      console.error('[Resend Error] Failed to send email:', JSON.stringify(resData));
+      log.error('[email] Resend rejected the send:', resData?.message ?? 'unknown');
       return {
         success: false,
         error: resData?.message || 'Resend API rejected the email request',
       };
     }
 
-    console.log(`[Resend Success] Confirmation email sent for order ${params.orderNumber} (id: ${resData?.id})`);
+    log.info(`[email] Confirmation sent for order ${params.orderNumber} (id: ${resData?.id})`);
     return { success: true };
   } catch (err) {
-    console.error('[Resend Error] Network error sending email:', errorMessage(err, 'unknown error'));
+    log.error('[email] Network error sending email:', err);
     return { success: false, error: errorMessage(err, 'Network error sending email') };
   }
 }

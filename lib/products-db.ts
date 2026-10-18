@@ -1,5 +1,6 @@
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { products as staticProducts } from '@/data/products';
+import { log } from '@/lib/log';
 import type { Product } from '@/types';
 
 /**
@@ -74,7 +75,7 @@ export async function getAllProducts(): Promise<Product[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error(
+      log.error(
         '[getAllProducts] Supabase error — returning empty catalogue (DB is the source of truth):',
         error.message
       );
@@ -83,10 +84,7 @@ export async function getAllProducts(): Promise<Product[]> {
 
     return (data ?? []).map(mapRow);
   } catch (e) {
-    console.error(
-      '[getAllProducts] Supabase fetch failed — returning empty catalogue:',
-      e
-    );
+    log.error('[getAllProducts] Supabase fetch failed — returning empty catalogue:', e);
     return [];
   }
 }
@@ -106,16 +104,13 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       .maybeSingle();
 
     if (error) {
-      console.error(
-        '[getProductBySlug] Supabase error — treating as not found:',
-        error.message
-      );
+      log.error('[getProductBySlug] Supabase error — treating as not found:', error.message);
       return null;
     }
 
     return data ? mapRow(data) : null;
   } catch (e) {
-    console.error('[getProductBySlug] Supabase fetch failed — treating as not found:', e);
+    log.error('[getProductBySlug] Supabase fetch failed — treating as not found:', e);
     return null;
   }
 }

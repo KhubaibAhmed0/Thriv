@@ -64,7 +64,7 @@ thriv/
 │   ├── product/[slug]/page.tsx     # PDP with condition badge, measurements, size selector, final sale note
 │   ├── cart/page.tsx               # Cart view with live calculation and checkout redirect
 │   ├── checkout/page.tsx           # Full checkout with Faysal Bank & wallet details, Rs 200 delivery
-│   ├── order/[orderNumber]/page.tsx# Order confirmation with WhatsApp button & payment instructions
+│   ├── order/[publicToken]/page.tsx# Order confirmation (unguessable token) with WhatsApp button & payment instructions
 │   ├── admin/page.tsx              # Admin orders portal (guarded by proxy.ts)
 │   ├── api/
 │   │   ├── orders/route.ts         # Handles order creation, Zod validation, Supabase saving

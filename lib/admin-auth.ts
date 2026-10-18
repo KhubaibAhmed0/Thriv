@@ -10,6 +10,19 @@ export interface AdminUser {
   email?: string;
 }
 
+/** Decode a JWT payload without verifying (the token is verified via getUser). */
+function decodeJwtClaims(token: string): { sub?: string; aal?: string } | null {
+  const parts = token.split('.');
+  if (parts.length !== 3 || !parts[1]) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    return parsed as { sub?: string; aal?: string };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Verifies that a Supabase access token belongs to a registered admin.
  *
@@ -76,6 +89,16 @@ export async function verifyAdminToken(
 
     if (!adminRow) {
       securityLog('auth.denied', { reason: 'not-admin', userId: user.id });
+      return { authorized: false };
+    }
+
+    // Phase 3 (2026-10-18 brief): MFA is mandatory. Only aal2 tokens (issued
+    // by the MFA verify route after a TOTP code check) may access /admin or
+    // /api/admin. The token itself was just validated by Supabase (getUser)
+    // above, so reading the `aal` claim from its payload is sound.
+    const claims = decodeJwtClaims(token);
+    if (!claims || claims.aal !== 'aal2' || claims.sub !== user.id) {
+      securityLog('auth.denied', { reason: 'mfa-required', userId: user.id });
       return { authorized: false };
     }
 

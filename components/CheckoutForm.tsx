@@ -8,6 +8,7 @@ import { ArrowRight, AlertCircle, ChevronDown, MessageCircle } from 'lucide-reac
 import { useCart } from '@/components/CartProvider';
 import { ProductImage } from '@/components/ProductImage';
 import { Badge } from '@/components/ui/Badge';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
 import { formatPrice } from '@/lib/formatPrice';
 import {
   PROVINCES,
@@ -111,6 +112,17 @@ export function CheckoutForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [checkoutUnavailable, setCheckoutUnavailable] = useState(false);
+  // Phase 4 (2026-10-18 brief): Turnstile + honeypot.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const [widgetKey, setWidgetKey] = useState(0);
+  const [honeypot, setHoneypot] = useState('');
+
+  const resetTurnstile = () => {
+    setTurnstileToken(null);
+    setTurnstileReady(false);
+    setWidgetKey((k) => k + 1);
+  };
 
   // Redirect to cart if the cart is empty — but ONLY after hydration
   // (audit F-07). Before hydration items.length === 0 is meaningless and
@@ -205,6 +217,8 @@ export function CheckoutForm() {
         notes:                formData.notes || null,
         payment_method:       paymentMethod,
         agreed_to_final_sale: agreedToFinalSale,
+        turnstile_token:      turnstileToken,
+        website:              honeypot,
         items: items.map((item) => ({
           product_slug:  item.product.slug,
           quantity:      item.quantity,
@@ -232,6 +246,8 @@ export function CheckoutForm() {
         setCheckoutUnavailable(
           data.code === 'CHECKOUT_UNAVAILABLE' || response.status === 503
         );
+        // The Turnstile token was single-use; arm a fresh widget for retry.
+        resetTurnstile();
         setIsSubmitting(false);
         return;
       }
@@ -252,6 +268,17 @@ export function CheckoutForm() {
       }
 
       const orderNumber: string = data.order_number;
+      const publicToken: string = data.public_token;
+
+      // Defence in depth: a success response without a token-shaped public
+      // token would break the confirmation page — surface an error instead
+      // of redirecting to a dead URL.
+      if (typeof publicToken !== 'string' || !UUID_RE.test(publicToken)) {
+        setSubmitError('Something went wrong. Please message us on WhatsApp (0324-8188616).');
+        setIsSubmitting(false);
+        return;
+      }
+
       setOrderPlaced(true);
 
       const orderData = {
@@ -274,7 +301,7 @@ export function CheckoutForm() {
       };
 
       try {
-        localStorage.setItem(`thriv_order_${orderNumber}`, JSON.stringify(orderData));
+        localStorage.setItem(`thriv_order_${publicToken}`, JSON.stringify(orderData));
       } catch {
         // non-fatal
       }
@@ -287,7 +314,7 @@ export function CheckoutForm() {
       }
 
       clearCart();
-      router.replace(`/order/${orderNumber}`);
+      router.replace(`/order/${publicToken}`);
     } catch {
       setSubmitError('Network error. Please check your connection and try again.');
       setIsSubmitting(false);
@@ -402,7 +429,18 @@ export function CheckoutForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate>
+      <form onSubmit={handleSubmit} noValidate className="relative">
+        {/* Honeypot — off-screen and aria-hidden; humans never see or fill it */}
+        <div className="absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden" aria-hidden="true">
+          <input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+          />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
           {/* ── Left: Delivery & Payment Form ── */}
@@ -675,10 +713,19 @@ export function CheckoutForm() {
                 <span>{formatPrice(total)}</span>
               </div>
 
+              {/* Turnstile widget (brief 4a) — remounts per attempt via key */}
+              <TurnstileWidget
+                key={widgetKey}
+                theme="light"
+                onToken={setTurnstileToken}
+                onReady={() => setTurnstileReady(true)}
+                className="flex justify-center mb-3"
+              />
+
               {/* Place Order CTA */}
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (turnstileReady && !turnstileToken)}
                 className="w-full inline-flex items-center justify-center gap-2 bg-black text-white font-bold text-sm py-4 rounded-full hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)] active:scale-[0.99] cursor-pointer"
               >
                 {isSubmitting ? (
