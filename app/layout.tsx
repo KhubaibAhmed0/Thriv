@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { SITE_URL } from '@/lib/site-url';
 import { CartProvider } from '@/components/CartProvider';
@@ -8,11 +8,18 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { WhatsAppFAB } from '@/components/WhatsAppFAB';
 
-const inter = Inter({
-  subsets: ['latin'],
+const inter = localFont({
+  src: './fonts/Inter-Variable.ttf',
   display: 'swap',
   variable: '--font-inter',
-  weight: ['300', '400', '500', '600', '700', '800'],
+  weight: '100 900',
+});
+
+const anton = localFont({
+  src: './fonts/Anton-Regular.ttf',
+  display: 'swap',
+  variable: '--font-display',
+  weight: '400',
 });
 
 export const metadata: Metadata = {
@@ -39,12 +46,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${anton.variable}`}>
       <body className="bg-page text-black font-[var(--font-inter)] antialiased min-h-screen flex flex-col justify-between">
         <CartProvider>
           <WishlistProvider>
             <Header />
-            <div className="flex-1">
+            <div id="store-content" tabIndex={-1} className="flex-1">
               {children}
             </div>
             <Footer />

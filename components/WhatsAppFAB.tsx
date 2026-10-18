@@ -15,7 +15,7 @@ export function WhatsAppFAB() {
   const pathname = usePathname();
   const currentProduct = useCurrentProduct();
 
-  if (pathname?.startsWith('/admin')) {
+  if (pathname === '/' || pathname?.startsWith('/admin')) {
     return null;
   }
 
