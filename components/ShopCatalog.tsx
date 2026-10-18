@@ -1,387 +1,202 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowUpDown, X, Search, Sparkles } from 'lucide-react';
-import { products as initialProducts } from '@/data/products';
-import { ProductCard } from '@/components/ProductCard';
-import { CustomDropdown, type DropdownOption } from '@/components/ui/CustomDropdown';
-import type { Brand, Product } from '@/types';
+import { ArrowUpRight, ChevronDown, Heart, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ShopProductCard } from '@/components/ShopProductCard';
+import type { Product } from '@/types';
+import styles from './ShopCatalog.module.css';
 
-const BRANDS: Brand[] = ['Zara', 'Bershka', 'Calvin Klein', 'H&M', 'Old Navy', 'Thriv'];
-
-const brandOptions: DropdownOption[] = [
-  { value: 'all', label: 'All Brands' },
-  ...BRANDS.map((b) => ({ value: b, label: b })),
+const categories = [
+  { value: 'all', label: 'All pieces' },
+  { value: 'jeans', label: 'Denim' },
+  { value: 'graphic-tees', label: 'Graphic tees' },
 ];
-
-const conditionOptions: DropdownOption[] = [
-  { value: 'all', label: 'All Conditions' },
-  { value: 'Premium', label: 'Grade: Premium', dotColor: '#5A4A2F' },
-  { value: 'Excellent', label: 'Grade: Excellent', dotColor: '#1E3A5F' },
-  { value: 'Very Good', label: 'Grade: Very Good', dotColor: '#2E5E2E' },
-];
-
-const sortOptions: DropdownOption[] = [
-  { value: 'newest', label: 'Featured & Newest' },
-  { value: 'price-asc', label: 'Price: Low to High' },
-  { value: 'price-desc', label: 'Price: High to Low' },
-];
+const fitLabel = (value: string) => value.replaceAll('-', ' ');
 
 export function ShopCatalog() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
-    fetch('/api/products')
-      .then((r) => r.json())
-      .then((data) => {
-        // Accept empty results too — the API is now the source of truth
-        // (audit F-13); an empty catalogue must not be papered over with
-        // stale static seed products.
-        if (Array.isArray(data.products)) {
+    const controller = new AbortController();
+    fetch('/api/products', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Catalogue unavailable');
+        const data = await response.json();
+        if (!Array.isArray(data.products)) throw new Error('Invalid catalogue');
+        if (!controller.signal.aborted) {
+          // The returned catalogue is authoritative, including an empty one.
           setAllProducts(data.products);
+          setLoadState('ready');
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => { if (!controller.signal.aborted) setLoadState('error'); });
+    return () => controller.abort();
+  }, [attempt]);
 
-  // Read URL query params
-  const activeCategory = searchParams.get('category') || 'all';
-  const activeSubcategory = searchParams.get('subcategory') || 'all';
-  const activeBrand = searchParams.get('brand') || 'all';
-  const activeCondition = searchParams.get('condition') || 'all';
-  const activeSort = searchParams.get('sort') || 'newest';
-  const searchQuery = searchParams.get('q') || '';
+  const category = searchParams.get('category') || 'all';
+  const fit = searchParams.get('subcategory') || 'all';
+  const brand = searchParams.get('brand') || 'all';
+  const condition = searchParams.get('condition') || 'all';
+  const sort = searchParams.get('sort') || 'newest';
+  const query = searchParams.get('q') || '';
 
-  // Helper to update URL params
-  const setParam = (key: string, value: string) => {
+  const updateParams = (changes: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === 'all' || !value) {
-      params.delete(key);
-    } else {
-      params.set(key, value);
-    }
-    const query = params.toString();
-    router.push(`/shop${query ? `?${query}` : ''}`, { scroll: false });
+    Object.entries(changes).forEach(([key, value]) => {
+      if (value === 'all' || !value) params.delete(key);
+      else params.set(key, value);
+    });
+    router.push(`/shop${params.size ? `?${params}` : ''}`, { scroll: false });
   };
+  const reset = () => router.push('/shop', { scroll: false });
 
-  const clearAllFilters = () => {
-    router.push('/shop', { scroll: false });
-  };
+  const products = useMemo(() => allProducts.filter((product) => {
+    const searchText = [product.name, product.brand, product.description, product.subcategory].join(' ').toLowerCase();
+    return (!query || searchText.includes(query.trim().toLowerCase()))
+      && (category === 'all' || product.category === category)
+      && (fit === 'all' || product.subcategory === fit)
+      && (brand === 'all' || product.brand === brand)
+      && (condition === 'all' || product.condition === condition);
+  }).sort((a, b) => {
+    const stockOrder = Number(a.stock <= 0) - Number(b.stock <= 0);
+    if (stockOrder) return stockOrder;
+    if (sort === 'price-asc') return a.price - b.price;
+    if (sort === 'price-desc') return b.price - a.price;
+    return Number(Boolean(b.isFeatured)) - Number(Boolean(a.isFeatured));
+  }), [allProducts, category, fit, brand, condition, sort, query]);
 
-  // Primary category chips tailored for Jeans & Graphic Tees
-  const categoryPills = [
-    { label: 'All Items', cat: 'all', sub: 'all' },
-    { label: 'Jeans (Thrift 1-of-1)', cat: 'jeans', sub: 'all' },
-    { label: 'Graphic T-Shirts (Merch)', cat: 'graphic-tees', sub: 'all' },
-    { label: 'Baggy & Wide-Leg', cat: 'jeans', sub: 'wide-leg' },
-    { label: 'Straight Leg Denim', cat: 'jeans', sub: 'straight-leg' },
-    { label: 'Cargo Denim', cat: 'jeans', sub: 'cargo-denim' },
-    { label: 'Vintage Wash', cat: 'jeans', sub: 'vintage-wash' },
-    { label: 'Anime Heavyweight Tees', cat: 'graphic-tees', sub: 'anime-tees' },
-  ];
-
-  // Filter and sort products
-  const filteredProducts = useMemo(() => {
-    return allProducts
-      .filter((product) => {
-        // Search query filter
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
-          const matchName = product.name.toLowerCase().includes(q);
-          const matchBrand = product.brand.toLowerCase().includes(q);
-          const matchDesc = product.description.toLowerCase().includes(q);
-          const matchSub = product.subcategory.toLowerCase().includes(q);
-          if (!matchName && !matchBrand && !matchDesc && !matchSub) return false;
-        }
-
-        // Category filter
-        if (activeCategory !== 'all' && product.category !== activeCategory) {
-          return false;
-        }
-
-        // Subcategory filter
-        if (activeSubcategory !== 'all' && product.subcategory !== activeSubcategory) {
-          return false;
-        }
-
-        // Brand filter
-        if (activeBrand !== 'all' && product.brand !== activeBrand) {
-          return false;
-        }
-
-        // Condition filter
-        if (activeCondition !== 'all' && product.condition !== activeCondition) {
-          return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        // In-stock items (stock > 0) always appear before sold-out items (stock <= 0)
-        const aSold = a.stock <= 0;
-        const bSold = b.stock <= 0;
-        if (aSold && !bSold) return 1;
-        if (!aSold && bSold) return -1;
-
-        if (activeSort === 'price-asc') {
-          return a.price - b.price;
-        }
-        if (activeSort === 'price-desc') {
-          return b.price - a.price;
-        }
-        // 'newest' default: keep featured first, then original order
-        if (a.isFeatured && !b.isFeatured) return -1;
-        if (!a.isFeatured && b.isFeatured) return 1;
-        return 0;
-      });
-  }, [allProducts, activeCategory, activeSubcategory, activeBrand, activeCondition, activeSort, searchQuery]);
-
-  const hasActiveFilters =
-    activeCategory !== 'all' ||
-    activeSubcategory !== 'all' ||
-    activeBrand !== 'all' ||
-    activeCondition !== 'all' ||
-    searchQuery !== '';
+  const brands = [...new Set([...allProducts.map((product) => product.brand), ...(brand !== 'all' ? [brand] : [])])].sort();
+  const fits = [...new Set([
+    ...allProducts.filter((product) => category === 'all' || product.category === category).map((product) => product.subcategory).filter(Boolean),
+    ...(fit !== 'all' ? [fit] : []),
+  ])].sort();
+  const activeFilters = [
+    { key: 'q', value: query, label: `Search: ${query}` },
+    { key: 'brand', value: brand, label: brand },
+    { key: 'subcategory', value: fit, label: fitLabel(fit) },
+    { key: 'condition', value: condition, label: condition },
+  ].filter((item) => item.value && item.value !== 'all');
+  const filterCount = [brand, fit, condition].filter((value) => value !== 'all').length;
+  const hasFilters = category !== 'all' || activeFilters.length > 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      
-      {/* Breadcrumb Navigation */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-text mb-4">
-        <Link href="/" className="hover:text-black transition-colors">
-          Home
-        </Link>
-        <span>/</span>
-        <span className="text-black font-medium">Shop</span>
-        {activeCategory !== 'all' && (
-          <>
-            <span>/</span>
-            <span className="capitalize text-black">
-              {activeCategory === 'jeans' ? 'Jeans' : 'Graphic T-Shirts'}
-            </span>
-          </>
-        )}
+    <div className={`${styles.catalog} home-container`}>
+      <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
+        <Link href="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Shop</span>
       </nav>
-
-      {/* Page Title & Subtitle */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-border">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-black tracking-tight">
-            Curated Drops
-          </h1>
-          <p className="text-sm text-body mt-1.5 max-w-xl">
-            One-of-one branded denim (Zara, Bershka, Calvin Klein, H&M, Old Navy) sanitized and checked in Karachi, alongside in-house anime graphic tees.
-          </p>
+      <header className={styles.intro}>
+        <h1 className="home-display">Curated drops<span>.</span></h1>
+        <div className={styles.introCopy}>
+          <p>One-of-one branded denim.<br />In-house graphic tees. Yours to make your own.</p>
+          <span>Handpicked in Karachi. Delivered across Pakistan.</span>
         </div>
-
-        {/* Total results count — live region so filter changes are announced (F-70) */}
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className="text-xs font-semibold text-body shrink-0 bg-white border border-border px-3.5 py-1.5 rounded-full self-start md:self-auto"
-        >
-          {filteredProducts.length} {filteredProducts.length === 1 ? 'Piece' : 'Pieces'}
-        </div>
-      </div>
-
-      {/* ── Category Filter Pills Row ── */}
-      <div className="py-5 overflow-x-auto no-scrollbar snap-x-mandatory">
-        <div className="flex items-center gap-2">
-          {categoryPills.map((pill) => {
-            const isSelected =
-              (pill.cat === 'all' && activeCategory === 'all' && activeSubcategory === 'all') ||
-              (pill.cat === activeCategory && (pill.sub === 'all' ? activeSubcategory === 'all' : activeSubcategory === pill.sub));
-
-            return (
-              <button
-                key={pill.label}
-                type="button"
-                onClick={() => {
-                  const params = new URLSearchParams(searchParams.toString());
-                  if (pill.cat === 'all') {
-                    params.delete('category');
-                    params.delete('subcategory');
-                  } else {
-                    params.set('category', pill.cat);
-                    if (pill.sub !== 'all') {
-                      params.set('subcategory', pill.sub);
-                    } else {
-                      params.delete('subcategory');
-                    }
-                  }
-                  const q = params.toString();
-                  router.push(`/shop${q ? `?${q}` : ''}`, { scroll: false });
-                }}
-                className={[
-                  'px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer snap-start',
-                  isSelected
-                    ? 'bg-black text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
-                    : 'bg-white text-body hover:text-black border border-border hover:border-black',
-                ].join(' ')}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Secondary Controls: Brand, Condition & Sort ── */}
-      <div className="bg-card rounded-[16px] p-3 sm:p-4 mb-8 flex flex-wrap items-center justify-between gap-4">
-        
-        {/* Left: Search + Brand & Condition pills */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {/* Shop-local search (audit F-86) — keyed by the URL query so
-              external resets re-seed the input. */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const data = new FormData(e.currentTarget);
-              const q = String(data.get('q') ?? '').trim();
-              setParam('q', q);
-            }}
-            className="relative"
-          >
-            <label htmlFor="shop-search" className="sr-only">
-              Search the shop
-            </label>
-            <Search
-              aria-hidden="true"
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-text pointer-events-none"
-            />
-            <input
-              id="shop-search"
-              key={searchQuery}
-              name="q"
-              type="search"
-              defaultValue={searchQuery}
-              placeholder="Search the shop..."
-              className="w-44 sm:w-52 bg-white text-black placeholder:text-muted-text border border-border focus:border-black rounded-full pl-9 pr-3.5 py-1.5"
-            />
-          </form>
-
-          <span className="text-muted-text font-semibold uppercase tracking-wider text-[10px] hidden sm:inline mr-1">
-            Filter:
-          </span>
-
-          {/* Brand Selector */}
-          <CustomDropdown
-            prefix="Brand"
-            value={activeBrand}
-            onChange={(val) => setParam('brand', val)}
-            options={brandOptions}
-          />
-
-          {/* Condition Selector */}
-          <CustomDropdown
-            prefix="Condition"
-            value={activeCondition}
-            onChange={(val) => setParam('condition', val)}
-            options={conditionOptions}
-          />
-
-          {/* Search Query Pill if searching */}
-          {searchQuery && (
-            <span className="inline-flex items-center gap-1.5 bg-white text-black text-xs font-medium px-3 py-1.5 rounded-full border border-border">
-              <Search className="w-3 h-3 text-muted-text" />
-              &quot;{searchQuery}&quot;
-              <button
-                type="button"
-                onClick={() => setParam('q', '')}
-                className="hover:text-red-600 ml-1"
-                aria-label="Remove search filter"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {/* Clear Filters Button */}
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="text-xs text-badge-sold-text hover:underline font-semibold ml-2 cursor-pointer"
-            >
-              Reset All
+      </header>
+      <div className={styles.collectionNav}>
+        <div className={styles.categories} role="group" aria-label="Product categories">
+          {categories.map((item) => (
+            <button key={item.value} type="button" aria-pressed={category === item.value}
+              onClick={() => updateParams({ category: item.value, subcategory: 'all' })}>
+              <span className="home-display">{item.label}</span>
+              {loadState === 'ready' && <small>{allProducts.filter((product) => item.value === 'all' || product.category === item.value).length}</small>}
             </button>
-          )}
-        </div>
-
-        {/* Right: Sort Control */}
-        <div className="ml-auto">
-          <CustomDropdown
-            prefix="Sort"
-            icon={<ArrowUpDown className="w-3 h-3" />}
-            value={activeSort}
-            onChange={(val) => setParam('sort', val)}
-            options={sortOptions}
-            align="right"
-          />
-        </div>
-
-      </div>
-
-      {/* ── Product Grid ── */}
-      <h2 className="sr-only">Products</h2>
-      {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-          {filteredProducts.map((product, idx) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              priority={idx < 4}
-            />
           ))}
         </div>
-      ) : (
-        /* ── Written Empty State (not a shrug) ── */
-        <div className="bg-card rounded-[20px] p-8 sm:p-12 text-center max-w-2xl mx-auto my-12 border border-border">
-          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <Sparkles className="w-6 h-6 text-black" />
-          </div>
-          <h2 className="text-xl font-bold text-black">
-            No Pieces Match This Filter
-          </h2>
-          <p className="text-sm text-body mt-2 leading-relaxed">
-            Every thrift piece at Thriv is a unique one-of-one item with a single size and stock of exactly 1. Because pieces don&apos;t restock, specific combinations of fit, brand, or size sell out quickly.
+        <Link href="/wishlist" className={styles.savedLink}><Heart size={16} aria-hidden="true" />Saved pieces<ArrowUpRight size={14} aria-hidden="true" /></Link>
+      </div>
+      <section aria-label="Refine the collection" className={styles.controls}>
+        <div className={styles.toolbar}>
+          <form className={styles.search} onSubmit={(event) => {
+            event.preventDefault();
+            updateParams({ q: String(new FormData(event.currentTarget).get('q') ?? '').trim() });
+          }}>
+            <label htmlFor="shop-search" className="sr-only">Search the collection</label>
+            <input key={query} id="shop-search" name="q" type="search" defaultValue={query} placeholder="Find your next piece" />
+            <button type="submit" aria-label="Search collection"><Search size={17} aria-hidden="true" /></button>
+          </form>
+          <button type="button" className={styles.filterToggle} aria-expanded={filtersOpen} aria-controls="shop-filters"
+            onClick={() => setFiltersOpen(!filtersOpen)}>
+            <SlidersHorizontal size={16} aria-hidden="true" />Filters{filterCount > 0 && <span>{filterCount}</span>}
+          </button>
+          <p className={styles.resultCount} role="status" aria-live="polite" aria-atomic="true">
+            {loadState === 'loading' ? 'Loading pieces…' : loadState === 'error' ? 'Collection unavailable' : `${products.length} ${products.length === 1 ? 'piece' : 'pieces'}`}
           </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="bg-black text-white text-xs font-semibold px-5 py-2.5 rounded-full hover:bg-black transition-colors"
-            >
-              Reset Filters & View All
-            </button>
-            <Link
-              href="/shop?category=jeans"
-              className="bg-white text-black border border-border text-xs font-semibold px-5 py-2.5 rounded-full hover:border-black transition-colors"
-            >
-              Browse All Jeans
-            </Link>
-            <Link
-              href="/shop?category=graphic-tees"
-              className="bg-white text-black border border-border text-xs font-semibold px-5 py-2.5 rounded-full hover:border-black transition-colors"
-            >
-              Browse Graphic Tees
-            </Link>
+          <div className={styles.sort}>
+            <label htmlFor="shop-sort">Sort by</label>
+            <select id="shop-sort" value={sort} onChange={(event) => updateParams({ sort: event.target.value })}>
+              <option value="newest">Featured & newest</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+            </select>
+            <ChevronDown size={14} aria-hidden="true" />
           </div>
         </div>
-      )}
-
-      {/* Bottom delivery reminder */}
-      <div className="mt-16 text-center border-t border-border pt-8">
-        <p className="text-xs text-muted-text">
-          Dispatched from Karachi · Flat Rs 200 delivery nationwide · All thrift items are 1-of-1 final sale
-        </p>
+        <div id="shop-filters" className={styles.filterPanel} hidden={!filtersOpen}>
+          <div className={styles.filterField}>
+            <label htmlFor="shop-brand">Brand</label>
+            <select id="shop-brand" value={brand} onChange={(event) => updateParams({ brand: event.target.value })}>
+              <option value="all">All brands</option>
+              {brands.map((value) => <option key={value} value={value}>{value}</option>)}
+            </select><ChevronDown size={14} aria-hidden="true" />
+          </div>
+          <div className={styles.filterField}>
+            <label htmlFor="shop-fit">Style / fit</label>
+            <select id="shop-fit" value={fit} onChange={(event) => updateParams({ subcategory: event.target.value })}>
+              <option value="all">All styles & fits</option>
+              {fits.map((value) => <option key={value} value={value}>{fitLabel(value)}</option>)}
+            </select><ChevronDown size={14} aria-hidden="true" />
+          </div>
+          <div className={styles.filterField}>
+            <label htmlFor="shop-condition">Condition</label>
+            <select id="shop-condition" value={condition} onChange={(event) => updateParams({ condition: event.target.value })}>
+              <option value="all">All conditions</option>
+              {['Premium', 'Excellent', 'Very Good'].map((value) => <option key={value} value={value}>{value}</option>)}
+            </select><ChevronDown size={14} aria-hidden="true" />
+          </div>
+          <button type="button" className={styles.reset} onClick={reset}>Reset all</button>
+        </div>
+        {activeFilters.length > 0 && <div className={styles.activeFilters} aria-label="Active filters">
+          {activeFilters.map((item) => <button type="button" key={item.key} onClick={() => updateParams({ [item.key]: 'all' })} aria-label={`Remove ${item.label} filter`}>
+            <span>{item.label}</span><X size={13} aria-hidden="true" />
+          </button>)}
+          <button type="button" className={styles.clearFilters} onClick={reset}>Clear all</button>
+        </div>}
+      </section>
+      <section aria-label="Products" aria-busy={loadState === 'loading'}>
+        {loadState === 'loading' ? (
+          <div className={styles.grid} aria-hidden="true">
+            {[0, 1, 2, 3, 4, 5].map((value) => <div key={value} className={styles.skeleton}><div /><span /><span /></div>)}
+          </div>
+        ) : loadState === 'error' ? (
+          <div className={styles.empty} role="alert">
+            <h2 className="home-display">A little interruption.</h2>
+            <p>We couldn’t load the collection. Please try again.</p>
+            <button type="button" className="home-button" onClick={() => { setLoadState('loading'); setAttempt(attempt + 1); }}>Try again<ArrowUpRight size={16} aria-hidden="true" /></button>
+          </div>
+        ) : products.length > 0 ? (
+          <div className={styles.grid}>
+            {products.map((product, index) => <ShopProductCard key={product.id} product={product} preload={index < 3} />)}
+          </div>
+        ) : (
+          <div className={styles.empty}>
+            <h2 className="home-display">{hasFilters ? 'No match. Keep looking.' : 'Between drops.'}</h2>
+            <p>{hasFilters ? 'Try another brand or fit, or clear your filters to see the full collection.' : 'There are no pieces in the collection right now. Follow Thriv on Instagram for the next drop.'}</p>
+            {hasFilters ? <button type="button" onClick={reset} className="home-button">View all pieces<ArrowUpRight size={16} aria-hidden="true" /></button>
+              : <Link href="https://www.instagram.com/thriv.pk/" className="home-button" target="_blank" rel="noopener noreferrer">Follow the drops<ArrowUpRight size={16} aria-hidden="true" /></Link>}
+          </div>
+        )}
+      </section>
+      <div className={styles.delivery}>
+        <p className="home-display">Good pieces.<br />Worth finding.</p>
+        <p>Dispatched from Karachi.<br />Rs 200 nationwide delivery.<br />All thrift pieces are one-of-one, final sale.</p>
+        <Link href="/faq">A few things to know<ArrowUpRight size={17} aria-hidden="true" /></Link>
       </div>
-
     </div>
   );
 }

@@ -9,7 +9,7 @@ const WHATSAPP_NUMBER = '923248188616';
 const GENERIC_MESSAGE = 'Hello Thriv! I have a question about an item.';
 
 /** Screens whose bottom-right corner has real CTAs: FAB shrinks to a circle. */
-const COMPACT_PREFIXES = ['/cart', '/checkout', '/order'];
+const COMPACT_PREFIXES = ['/shop', '/cart', '/checkout', '/order'];
 
 export function WhatsAppFAB() {
   const pathname = usePathname();
