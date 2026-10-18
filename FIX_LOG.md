@@ -529,6 +529,6 @@ Operational notes:
 | `npm run build` (incl. TypeScript) | ✓ clean |
 | New probe `security/attack-tests/probe-nofactor-login.mjs` vs local production build | ✓ **8/8** — password → `mfa_setup` + QR + manual key → live TOTP → `aal2` admin cookie → `/api/admin/orders` 200 |
 | Full local attack suite (`IP_OFFSET=60`, has-factor path) | ✓ **39/39** |
-| Same no-factor probe vs production | ✓ **_PROD_RESULT_** |
+| Same no-factor probe vs production | ✓ **8/8** — deploy `de51d65` READY; password → `mfa_setup` + QR + manual key → live TOTP → `aal2` cookie → `/api/admin/orders` 200 |
 
 **Residue:** the probe creates and deletes its own throwaway admin (user + `admins` row + known `rate_limits`/`admin_login_attempts` buckets); suite teardown re-confirmed users removed 2/2.
