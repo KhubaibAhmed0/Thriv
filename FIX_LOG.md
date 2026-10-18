@@ -469,3 +469,45 @@ Operational notes:
 > - **MFA enrollment** for the admin account (F-44 remainder): Supabase dashboard → Authentication → Users → enroll TOTP. The throttle now limits brute force; MFA removes the password-only failure mode.
 > - Uploads are capped at **4 MB combined per product** because of the Vercel request-body limit; if full-size camera photos are needed later, the path forward is client-side compression or direct-to-storage signed uploads.
 > - Standing items from earlier batches: **attach the custom domain** (+ set `NEXT_PUBLIC_SITE_URL`), **real product photos**, **real Instagram post URLs**, and a final **copy/tone** pass.
+
+---
+
+## Batch B7 — Deep security hardening (2026-10-18)
+
+**Scope:** the owner's 7-phase hardening brief — DB-level limits, admin MFA, API/input hardening, upload validation, headers/secrets, and a live attack suite. Builds on the B6 foundation; no design or copy changes.
+
+### What was added / changed
+
+- **Migration `20261018_security_hardening.sql`** (applied and verified before the code deploy; additive and backward compatible with the running build): `rate_limits` table + `check_rate_limit(key, max, window)` RPC (sha256-keyed, fixed-window, service-only — raw IPs/emails never stored); `orders.public_token` (UUID, unique) now returned by `place_order`; `audit_log` + UPDATE triggers on `products`, `orders`, and admin mutations; RPC hardening on the order path.
+- **Admin auth (MFA, completes F-44)** — TOTP two-factor: password step → signed 5-minute stateless ticket cookie (`__Host-thriv_mfa_ticket`, HMAC-SHA256 keyed from the service key) → code step → `aal2` Supabase session is the only credential `verifyAdminToken` accepts. Both lockout buckets count **failures only** (a success can never move a legitimate admin toward lockout).
+- **Turnstile** — checkout + admin login; missing/blank secret fails **closed**; hostname binding active for real keys (test keys exempted until the owner's real keys are installed; a missing hostname on a real-key verification is rejected).
+- **Checkout** — per-IP DB burst limit, honeypot, strict Zod (unknown keys rejected, items ≤ 20, quantity ≤ 40), generic error copy, no PII in logs.
+- **Order lookup** — confirmation links and the lookup API are keyed by the unguessable `public_token` (UUID); legacy `THR-` links 404 by design. Lookup responses carry no PII, are `no-store`, and rate-limited.
+- **Uploads** — magic-byte validation then **sharp re-encode** to WebP (strips payloads/EXIF), 4 photos / 4 MB combined, storage paths are server-generated UUIDs only.
+- **Headers** — CSP `script-src`/`frame-src` allow `challenges.cloudflare.com`; `frame-ancestors 'none'` + `X-Frame-Options: DENY`; `X-Robots-Tag: noindex, nofollow` on `/admin/*`, `/api/admin/*`, and `/order/*`.
+- **Deps** — `next` / `eslint-config-next` → **16.4.2**; `npm audit --omit=dev` = 0; 5 dev-only highs remain in the `eslint-config-next` brace-chain (no patched release; `audit fix --force` would downgrade to 14.x — declined, documented).
+- **Attack suite** — `security/attack-tests/`: `setup.mjs` (fixture users + MFA enrollment), `run.mjs` (**39 checks**; `SUITE=prod` runs the 6 read-only checks), `teardown.mjs` (removes fixtures and counters, detaching `order_events.created_by` first).
+
+### Verification
+
+| Check | Result |
+| :--- | :--- |
+| `npx tsc --noEmit` / `eslint .` / `npm run build` | ✓ all clean (Next 16.4.2) |
+| `npx tsx scripts/check-admin-guard.ts` | ✓ all assertions pass |
+| Local attack suite vs production build (`security/attack-tests/last-run.md`) | ✓ **39/39** — headers, checkout, lookup, admin MFA/lockouts, uploads, forgot/aal1/non-admin tokens |
+| Production read-only subset vs `thriv-five.vercel.app` (`security/attack-tests/last-run-prod.md`) | ✓ **6/6** (headers, noindex, unauth 401, token-page title, legacy 404) |
+| Two independent review passes (security + integration) of the full diff | ✓ all blockers fixed before deploy (failure-only lockout counting, confirmation-page false-success state, password handling, `/order` noindex, Turnstile hostname fail-closed) |
+| GoTrue aal1 → second-factor bypass probe | ✓ refused (403) — a password-only session cannot enroll its way to aal2; pinned as suite check #39 |
+
+### Operational notes (2026-10-18)
+
+- **Vercel env restored before deploy**: the project was missing `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` (production had been surviving on an older deployment's snapshot) — re-set from the local env, together with the Turnstile variables (Production + Preview).
+- Deploy `c35214c` → **READY**; production header sweep + read-only subset green.
+- Fixtures torn down after the final run: both attack-test users deleted; `admins` / `rate_limits` / `admin_login_attempts` rows removed; `order_events.created_by` detached (FK to `auth.users`) before the user delete.
+- Five cancelled suite orders remain in the orders table for the record: `THR-00009` … `THR-00013` (customer "Attack Test Order", all cancelled with stock restored).
+
+> **Flagged for the owner:**
+> - **Re-login + re-enroll TOTP**: the `aal2` rule invalidates every pre-existing admin session (including the owner's). The first login after this deploy walks through QR enrollment — keep the authenticator safe.
+> - **Real Turnstile keys**: Cloudflare's always-pass **test** keys are in place until real keys are pasted into Vercel (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`); the bot check and hostname binding activate automatically with real keys.
+> - **HIBP leaked-password protection** is a Supabase **Pro-plan** feature — the Management API rejected enabling it on the current Free plan. Consider upgrading, or accept the current password policy.
+> - **`RESEND_API_KEY` is not set** in Vercel — order-confirmation emails remain intentionally stubbed.
