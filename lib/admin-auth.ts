@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { getSupabasePublicEnv } from '@/lib/supabase-env';
 import { ADMIN_COOKIE_NAME } from '@/lib/admin-cookie';
+import { ADMIN_MFA_ENABLED } from '@/lib/admin-mfa-config';
 import { securityLog } from '@/lib/security-log';
 
 export interface AdminUser {
@@ -92,12 +93,18 @@ export async function verifyAdminToken(
       return { authorized: false };
     }
 
-    // Phase 3 (2026-10-18 brief): MFA is mandatory. Only aal2 tokens (issued
-    // by the MFA verify route after a TOTP code check) may access /admin or
-    // /api/admin. The token itself was just validated by Supabase (getUser)
-    // above, so reading the `aal` claim from its payload is sound.
+    // MFA gate (Phase 3 brief). While ADMIN_MFA_ENABLED is true, only aal2
+    // tokens (issued by the MFA verify route after a TOTP code check) may
+    // access /admin or /api/admin. Currently disabled on owner request — see
+    // lib/admin-mfa-config.ts; the flag enforces this check, nothing else.
+    // The token itself was just validated by Supabase (getUser) above, so
+    // reading the `aal` claim from its payload is sound.
     const claims = decodeJwtClaims(token);
-    if (!claims || claims.aal !== 'aal2' || claims.sub !== user.id) {
+    if (
+      !claims ||
+      claims.sub !== user.id ||
+      (ADMIN_MFA_ENABLED && claims.aal !== 'aal2')
+    ) {
       securityLog('auth.denied', { reason: 'mfa-required', userId: user.id });
       return { authorized: false };
     }

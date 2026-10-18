@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { getSupabasePublicEnv } from '@/lib/supabase-env';
 import { securityLog } from '@/lib/security-log';
+import { ADMIN_COOKIE_NAME } from '@/lib/admin-cookie';
+import { ADMIN_MFA_ENABLED } from '@/lib/admin-mfa-config';
 import {
   clientIp,
   dbRateLimit,
@@ -34,17 +36,19 @@ import {
   recordLoginFailure,
 } from '@/lib/admin-login-throttle';
 
-// Version 2.0 — Phase 3 (2026-10-18 brief): MFA-mandatory admin login.
+// Version 2.1 — Phase 3 (2026-10-18 brief): admin login with MFA.
 //
 // Stage order: Origin → body (size-capped) → honeypot → distributed IP +
 // account rate limits → zod → Turnstile (fail closed) → persistent email+IP
-// failure throttle → password grant → admins check → MFA branch.
+// failure throttle → password grant → admins check → session.
 //
-// This route NEVER sets the admin cookie. After a correct password it returns
-// 401 with either `{mfa_required:true}` or
-// `{mfa_setup:true, qr_data_uri, manual_key}` and issues a signed, httpOnly
-// ticket cookie holding the aal1 token. The admin cookie is only ever set by
-// /api/admin/auth/mfa/verify, and only with an aal2 token.
+// MFA is switchable (lib/admin-mfa-config.ts). While enabled, this route
+// never sets the admin cookie: a correct password returns 401 with either
+// `{mfa_required:true}` or `{mfa_setup:true, qr_data_uri, manual_key}` and
+// issues a signed, httpOnly ticket cookie holding the aal1 token; the admin
+// cookie is then only set by /api/admin/auth/mfa/verify, with an aal2 token.
+// While disabled (owner request, 2026-10-18), a correct password sets the
+// admin cookie directly from the password-grant session.
 
 const MAX_BODY_BYTES = 10 * 1024;
 
@@ -237,7 +241,40 @@ export async function POST(req: NextRequest) {
       return fail(403, 'This account is not authorized for admin access.');
     }
 
-    // 10. MFA branch — never set the cookie here (Phase 3 brief).
+    // 10. Session completion. MFA is currently disabled on owner request
+    // (2026-10-18) — see lib/admin-mfa-config.ts. A correct password sets the
+    // admin cookie directly from the fresh password-grant session; the admin
+    // guard accepts that aal1 token while the flag is off. The full MFA
+    // branch below is intact and re-activates with the flag.
+    if (!ADMIN_MFA_ENABLED) {
+      const response = NextResponse.json(
+        { success: true, user: { id: userId, email: emailKey } },
+        { status: 200, headers: NO_STORE_HEADERS }
+      );
+      response.cookies.set({
+        name: ADMIN_COOKIE_NAME,
+        value: accessToken,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: authData.session.expires_in || 3600,
+      });
+      // Clear any stale MFA ticket left over from an interrupted sign-in.
+      response.cookies.set({
+        name: ADMIN_MFA_TICKET_COOKIE,
+        value: '',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+      });
+      securityLog('auth.login.success', { email: emailKey, ip, userId, mfa: 'disabled' });
+      return response;
+    }
+
+    // 10b. MFA branch — never set the admin cookie here (Phase 3 brief).
     const factors = await getTotpFactors(accessToken, authData.user.factors);
     if (!factors.ok) {
       log.error('[/api/admin/auth/login] factor lookup failed:', factors.reason);
