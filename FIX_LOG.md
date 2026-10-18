@@ -583,3 +583,24 @@ Operational notes:
 | Temp admin + its buckets + attempts rows | deleted after both runs |
 
 **Attack-suite note:** checks #25, #27–#29, #37 (MFA flow) and the aal1-admin assertion in #32 are expected to **FAIL by design** while the flag is off; they pass again unchanged once MFA is re-enabled. The suite was not modified — the MFA-off path is covered by the two probes above instead.
+
+---
+
+## Batch B9 — Order-confirmation emails live via Resend (owner request, 2026-10-18)
+
+**Request:** switch on customer order-confirmation emails; the owner supplied a Resend API key.
+
+**Installed:** `RESEND_API_KEY` in Vercel (Production + Preview, encrypted) and in the local `.env.local` (git-ignored — never committed). The key is a Resend *sending-access-only* key: it can send mail but cannot manage domains, contacts, or keys — exactly the least privilege a production mailer should hold.
+
+**What works now:** the order-confirmation email (`lib/email.ts` → Resend HTTP API, fire-and-forget — it can never delay or fail an order) sends for real. Verified end-to-end on a local production build against the live services:
+
+| Check | Result |
+| :--- | :--- |
+| Direct Resend send to the account's testing inbox (`thriv.str@gmail.com`) | ✓ accepted, id `01a14efb-…` |
+| Real order through `/api/orders` (THR-00016, customer email = that inbox) | ✓ 201; server log `[email] Confirmation sent for order THR-00016 (id: 01a14efc-…)` |
+| Admin cancel path + stock restored (temp admin → simple login → status PATCH) | ✓ THR-00016 cancelled, product stock back to 1; temp admin user fully cleaned up |
+| Truthful-copy gate (audit F-26) | `email_enabled` now requires the key **and** `RESEND_FROM_EMAIL` (`canDeliverCustomerEmail()` in `lib/email.ts`); until a verified sending domain exists, the confirmation page keeps the WhatsApp-primary copy instead of promising a receipt |
+
+**One owner action remains for customer delivery:** verify a sending domain in Resend (resend.com/domains → add domain → copy the SPF/DKIM DNS records into the domain's DNS). Resend rejects every send to a customer address until then — only the account's own inbox can receive mail. When the domain shows **Verified**, set `RESEND_FROM_EMAIL` (e.g. `Thriv <orders@thriv.pk>`) in Vercel and redeploy: emails start flowing, and the confirmation copy flips to "a receipt is on its way" automatically.
+
+**Notes:** until the domain is verified, customer sends are attempted and rejected (403, logged) — orders are unaffected. Test order THR-00016 remains as cancelled (same policy as THR-00009–00015). The `order_events.created_by` cleanup quirk was confirmed again: null it before deleting an admin user, or Supabase Auth returns 500.
