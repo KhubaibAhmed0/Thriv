@@ -134,8 +134,15 @@ export async function getTotpFactors(
 
   const fromUser = await userRequest('/user', accessToken);
   if (fromUser.status === 200) {
-    const factors = readFactors(fromUser.body);
-    if (factors) return { ok: true, factors };
+    // A 200 from /user is authoritative. This GoTrue build omits the
+    // `factors` field entirely while the user has none (probed live:
+    // absent pre-enrollment, array[1] once verified), so a missing field
+    // means "no factors" — never an error. Treating it as a parse failure
+    // broke every first-ever admin login with a 500 before the enroll
+    // branch (live prod report, 2026-10-18).
+    if (typeof fromUser.body === 'object' && fromUser.body !== null) {
+      return { ok: true, factors: readFactors(fromUser.body) ?? [] };
+    }
   }
 
   const fallback = readFactors({ factors: signInFactors });

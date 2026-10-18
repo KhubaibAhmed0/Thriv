@@ -511,3 +511,24 @@ Operational notes:
 > - **Real Turnstile keys**: Cloudflare's always-pass **test** keys are in place until real keys are pasted into Vercel (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`); the bot check and hostname binding activate automatically with real keys.
 > - **HIBP leaked-password protection** is a Supabase **Pro-plan** feature — the Management API rejected enabling it on the current Free plan. Consider upgrading, or accept the current password policy.
 > - **`RESEND_API_KEY` is not set** in Vercel — order-confirmation emails remain intentionally stubbed.
+
+---
+
+## Batch B7.1 — First-login hotfix (2026-10-18, from a live production report)
+
+**Symptom:** the owner's first production admin sign-in failed with *"Server error during authentication."* (HTTP 500) despite a correct password.
+
+**Root cause:** GoTrue omits the `factors` field from `GET /auth/v1/user` (and from the sign-in payload) **entirely while a user has no TOTP factors**. `lib/admin-mfa.ts` `readFactors()` treated the missing field as a parse failure, so `getTotpFactors()` returned `{ok:false}` and the login route answered 500 at the factor-lookup step — *before* the first-login enrollment branch could run. The attack-suite fixture always had a factor (enrolled by `setup.mjs`), so the field was always present in tests; only a true first-ever login — exactly the owner's state — hit the gap. Probed live against the project: pre-enrollment `factors` is absent; after verification it is `array[1] verified/totp`.
+
+**Fix:** `getTotpFactors()` now treats any `200` from `/user` as authoritative — `readFactors(body) ?? []`; a missing field means "no factors", never an error. Non-200 responses still fall back to the sign-in payload and then fail closed, as before. No other callers affected (`recheck` in the login route benefits identically).
+
+**Verification:**
+
+| Check | Result |
+| :--- | :--- |
+| `npm run build` (incl. TypeScript) | ✓ clean |
+| New probe `security/attack-tests/probe-nofactor-login.mjs` vs local production build | ✓ **8/8** — password → `mfa_setup` + QR + manual key → live TOTP → `aal2` admin cookie → `/api/admin/orders` 200 |
+| Full local attack suite (`IP_OFFSET=60`, has-factor path) | ✓ **39/39** |
+| Same no-factor probe vs production | ✓ **_PROD_RESULT_** |
+
+**Residue:** the probe creates and deletes its own throwaway admin (user + `admins` row + known `rate_limits`/`admin_login_attempts` buckets); suite teardown re-confirmed users removed 2/2.
