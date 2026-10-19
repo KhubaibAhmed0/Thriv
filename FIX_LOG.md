@@ -649,4 +649,46 @@ Operational notes:
 - The region A/B (`sin1` vs `bom1`) second leg was **not run**: with the catalogue edge-cached and remaining dynamic routes DB-bound, `sin1` answers a fresh DB-backed function request in ~0.34 s from Karachi (same order as the ~0.32 s static floor); rationale recorded in `docs/perf/region-ab.md §7.5`. Flip `vercel.json` to `["bom1"]` if a formal counter-measurement is ever wanted — one-line revert, procedure in the doc.
 - **Contract for future work:** any new endpoint that mutates products or stock **must** call `revalidateCatalog()` after success, or ISR will serve stale data for up to 60 s.
 - One live check remains owner-side (no code impact): an admin product edit should now appear on `/`, its product page and `/api/products` within seconds.
-- Phase 5 (image pipeline: resize >1600 px uploads, grid `sizes` fix) and the Instagram → listing workflow remain open from the plan.
+- Phase 5 (image pipeline) was completed in B11 below. The Instagram → listing workflow remains open from the plan.
+
+---
+
+## Batch B11 - Image pipeline: resize on upload + responsive optimized delivery (2026-10-19)
+
+**Request:** owner asked whether product photos would slow the site down, ahead of the first photo batch. Approved the three image fixes before upload.
+
+**What was wrong (audited before any photo existed):**
+
+- The sharp upload pipeline re-encoded to WebP but **never resized**. A 12 MP phone photo stayed 4000x3000 and became a 1.5-3 MB WebP.
+- `ProductImage` rendered product photos with `unoptimized`, so the PDP downloaded that full file verbatim (and only ever renders `images[0]`).
+- `sizes` was wrong in both directions: the PDP asked for `25vw` (it occupies ~55vw) while the shop grid asked for `50vw` (it occupies ~33vw), and every `HomeMedia` slot shared the hero hint.
+- Cart, checkout and "pairs well with" never passed `imageUrl` at all - they would have kept showing placeholders even after photos went live.
+
+**Changes (commit `a027aca`, deployed via `vercel --prod` CLI):**
+
+- **Upload:** `.rotate()` → `.resize({ width: 1600, height: 2000, fit: 'inside', withoutEnlargement: true })` → `.webp({ quality: 82 })`. Caps the stored master at display size without upscaling small sources; EXIF handling unchanged.
+- **`ProductImage`:** `unoptimized` removed, `sizes` became a caller-supplied prop (default = PDP hero). Thumbnails now request real pixel widths: cart `96px`, checkout `56px`, pairs-well-with `80px`; grid cards and the PDP got exact hints.
+- **`HomeMedia`:** optional `sizes` prop so hero (`40vw` / 515px cap), campaign (`36vw` / 465px), editorial (`55vw` / 715px), feature (`52vw` / 660px), home grid and shop grid (`33vw` / 440px cap; `50vw` ≤767px) each fetch their own size.
+- **`next.config.ts`:** `minimumCacheTTL: 31536000` (storage object paths are immutable UUIDs) and `formats: ["image/avif", "image/webp"]`.
+
+**Measured (local production build + real Supabase object + optimizer):**
+
+| Check | Result |
+| :--- | :--- |
+| 12 MP worst-case source → old pipeline | 3,740 KB, 4032x3024 |
+| 12 MP worst-case source → new pipeline | **937 KB, 1600x1200 (-75%)**; 800x600 source stays 800x600 |
+| Optimizer, `w=640` | **43 KB AVIF** (-95% vs source) |
+| Optimizer, `w=828` | 102 KB AVIF |
+| Optimizer, `w=1080` | **128 KB AVIF** - the variant a 3-col card picks at 2x |
+| Optimizer, `w=1920` | 339 KB AVIF |
+| Response header | `Cache-Control: public, max-age=31536000` (config applied) |
+| Shop HTML | `srcset` with 256-3840 w candidates, `sizes="(max-width: 767px) 50vw, (max-width: 1328px) 33vw, 440px"`, `loading="lazy"` |
+| PDP HTML | `sizes="(max-width: 1024px) 100vw, (max-width: 1328px) 55vw, 720px"` plus `<link rel="preload" as="image" imageSrcSet=...>` |
+| Gates | `tsc --noEmit`, `eslint`, `next build` all clean; no test data left in the build (verified 0 matches) |
+| Production | all 31 pieces render, PDP buy button present, 0 console errors; warm TTFB unchanged (home ~0.30 s, `/api/products` ~0.31 s, `/shop` HIT) |
+
+**Operational notes:**
+
+- Vercel Hobby includes 5,000 image transformations/month and the CDN caches each variant for a year, so a 31-product catalogue needs roughly 310 one-time transformations (~16x headroom). Exceeding the quota would make images fail, not just slow down - revisit if the catalogue grows by an order of magnitude.
+- Any future image writer (seed script, service-role import) must apply the same resize before upload; the cap lives only in the admin POST route today.
+- **Open gap found during this batch:** `PATCH /api/admin/products/[id]` accepts JSON metadata only (price/stock/visibility/name/etc.) and there is **no product edit page**, so photos cannot be attached to the 31 existing products through the admin UI. They can only be set at creation. A small script or a multipart PATCH + edit form is needed before the existing catalogue can receive photos.
