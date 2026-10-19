@@ -58,6 +58,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           aspectRatio="4:5"
           priority={priority}
           alt={product.name}
+          sizes="(max-width: 767px) 50vw, (max-width: 1328px) 33vw, 440px"
           className="transition-transform duration-300 group-hover:scale-[1.01]"
         />
 

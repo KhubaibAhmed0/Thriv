@@ -40,7 +40,7 @@ export default async function HomePage() {
           <p className="home-hero-description">Zara, Bershka, Calvin Klein,<br />H&amp;M and Old Navy.<br />Handpicked in Karachi.<br />Made for your everyday.</p>
           <div className="home-hero-circle home-hero-circle-back" aria-hidden="true" />
           <div className="home-hero-circle home-hero-circle-front" aria-hidden="true" />
-          <HomeMedia asset={homeAssets.hero} label="Hero photograph" className="home-hero-photo" preload />
+          <HomeMedia asset={homeAssets.hero} label="Hero photograph" className="home-hero-photo" preload sizes="(max-width: 767px) 80vw, (max-width: 1328px) 40vw, 515px" />
           <Link href="/shop?category=jeans" className="home-button home-hero-cta">Shop Jeans <ArrowUpRight size={18} /></Link>
         </div>
       </section>
@@ -58,7 +58,7 @@ export default async function HomePage() {
           <div className="home-campaign-circle" aria-hidden="true" />
           <h2 id="campaign-heading" className="home-display">Follow<br />the drops.</h2>
           <div className="home-campaign-rules" aria-hidden="true"><span /><span /><span /></div>
-          <HomeMedia asset={homeAssets.campaign} label="Campaign photograph" className="home-campaign-photo" />
+          <HomeMedia asset={homeAssets.campaign} label="Campaign photograph" className="home-campaign-photo" sizes="(max-width: 767px) 70vw, (max-width: 1328px) 36vw, 465px" />
           <div className="home-campaign-seal"><h3 className="home-display">Handpicked.<br />Disinfected.<br />Ready to wear.</h3><p>Branded denim. In-house tees.<br />Curated in Karachi,<br />shipped across Pakistan.</p></div>
           <div className="home-campaign-action"><p>One-of-one pieces sell fast.<br />Find your next everyday favourite.</p><Link href="/shop" className="home-button home-button-soft">Shop Now <ArrowRight size={17} /></Link></div>
         </div>

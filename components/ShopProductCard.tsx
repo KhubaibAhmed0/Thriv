@@ -31,7 +31,7 @@ export function ShopProductCard({ product, preload = false }: { product: Product
     <article className={styles.product}>
       <div className={styles.photo}>
         <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
-          <HomeMedia asset={productAsset(product)} label="Product photograph" preload={preload} />
+          <HomeMedia asset={productAsset(product)} label="Product photograph" preload={preload} sizes="(max-width: 767px) 50vw, (max-width: 1328px) 33vw, 440px" />
         </Link>
         <span className={styles.productTag}>{sold ? 'Sold out' : product.isMerch ? 'In-house merch' : '1 of 1 denim'}</span>
         <button type="button" className={styles.save} aria-pressed={saved}

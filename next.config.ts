@@ -72,6 +72,13 @@ const nextConfig: NextConfig = {
         hostname: supabaseHost,
       },
     ],
+    // B11 (2026-10-19 perf): catalogue photos are stored as immutable
+    // UUID-named objects (see app/api/admin/products/route.ts), so a
+    // transformed variant can never go stale — cache it for a year instead
+    // of Next's 4-hour default, and serve AVIF where the browser supports
+    // it (~20-30% smaller than WebP at the same quality).
+    minimumCacheTTL: 31536000,
+    formats: ["image/avif", "image/webp"],
   },
   async headers() {
     return [

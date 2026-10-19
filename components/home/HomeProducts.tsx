@@ -28,7 +28,7 @@ function Swatches({ product }: { product: Product }) {
 export function HomeProductCard({ product, wide = false }: { product: Product; wide?: boolean }) {
   return <article className={`home-product ${wide ? 'home-product-wide' : ''}`}>
     <div className="home-product-panel">
-      <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`}><HomeMedia asset={productAsset(product)} label="Product photograph" /></Link>
+      <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`}><HomeMedia asset={productAsset(product)} label="Product photograph" sizes="(max-width: 767px) 50vw, (max-width: 1328px) 33vw, 440px" /></Link>
       <SaveProduct product={product} />
       {product.stock <= 0 && <span className="home-sold-label">Sold out</span>}
     </div>
@@ -55,7 +55,7 @@ function FeaturedPurchase({ product }: { product: Product }) {
   const asset = homeAssets.featured.src ? homeAssets.featured : productAsset(product);
   const sold = product.stock <= 0;
   return <section className="home-feature home-container" aria-labelledby="feature-heading">
-    <HomeMedia asset={asset} label="Featured denim photograph" className="home-feature-photo" />
+    <HomeMedia asset={asset} label="Featured denim photograph" className="home-feature-photo" sizes="(max-width: 767px) 100vw, (max-width: 1328px) 52vw, 660px" />
     <div className="home-feature-copy">
       <h2 id="feature-heading" className="home-display"><Link href={`/product/${product.slug}`}>{product.name}</Link></h2>
       <p className="home-feature-fact">Handpicked &amp; disinfected · {product.condition}</p>

@@ -125,6 +125,7 @@ export function ProductDetailClient({
               aspectRatio="4:5"
               priority
               alt={product.name}
+              sizes="(max-width: 1024px) 100vw, (max-width: 1328px) 55vw, 720px"
               className="w-full rounded-[16px]"
             />
 

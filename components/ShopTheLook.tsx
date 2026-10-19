@@ -96,8 +96,10 @@ function LookItem({ item }: { item: Product }) {
           slug={item.slug}
           brand={item.brand}
           subcategory={item.subcategory}
+          imageUrl={item.images?.[0]}
           aspectRatio="4:5"
           alt={item.name}
+          sizes="80px"
         />
       </Link>
 

@@ -85,8 +85,10 @@ export function CartPageClient() {
                     slug={item.product.slug}
                     brand={item.product.brand}
                     subcategory={item.product.subcategory}
+                    imageUrl={item.product.images?.[0]}
                     aspectRatio="4:5"
                     alt={item.product.name}
+                    sizes="96px"
                   />
                 </Link>
 

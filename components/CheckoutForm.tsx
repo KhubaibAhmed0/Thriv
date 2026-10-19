@@ -681,8 +681,10 @@ export function CheckoutForm() {
                         slug={item.product.slug}
                         brand={item.product.brand}
                         subcategory={item.product.subcategory}
+                        imageUrl={item.product.images?.[0]}
                         aspectRatio="4:5"
                         alt={item.product.name}
+                        sizes="56px"
                       />
                     </div>
                     <div className="flex-1 min-w-0">

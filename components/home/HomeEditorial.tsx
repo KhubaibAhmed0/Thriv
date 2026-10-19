@@ -24,7 +24,7 @@ export function HomeEditorial({ products }: { products: Product[] }) {
       </div>
       <div className="home-editorial-visual">
         <div className="home-editorial-backplate" aria-hidden="true" />
-        <HomeMedia key={current?.slug ?? 'empty'} asset={asset} label="Editorial photograph" className="home-editorial-photo" />
+        <HomeMedia key={current?.slug ?? 'empty'} asset={asset} label="Editorial photograph" className="home-editorial-photo" sizes="(max-width: 767px) 90vw, (max-width: 1328px) 55vw, 715px" />
         {current && <Link href={`/product/${current.slug}`} className="home-editorial-caption" aria-live="polite">
           <span className="home-display">{current.name}</span>
           <span className="home-caption-bottom">{formatPrice(current.price)}<ArrowUpRight size={19} aria-hidden="true" /></span>

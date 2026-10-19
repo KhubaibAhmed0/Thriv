@@ -14,6 +14,13 @@ interface ProductImageProps {
   className?: string;
   priority?: boolean;
   imageUrl?: string;
+  /**
+   * Rendered width hint for next/image's srcset selection (B11).
+   * The same component powers the PDP hero (~55vw), grid cards (~25vw),
+   * cart thumbnails (~96px) and checkout thumbnails (~48px), so the caller
+   * supplies the hint; the default matches the PDP hero layout.
+   */
+  sizes?: string;
 }
 
 // Deterministic hue from slug string — gives each product a distinct warm-neutral tint
@@ -50,6 +57,7 @@ export function ProductImage({
   className = '',
   priority = false,
   imageUrl,
+  sizes = '(max-width: 1024px) 100vw, 55vw',
 }: ProductImageProps) {
   const [imgError, setImgError] = useState(false);
 
@@ -82,11 +90,10 @@ export function ProductImage({
           src={imageUrl}
           alt={altText}
           fill
-          unoptimized
           className="object-cover"
           onError={() => setImgError(true)}
           priority={priority}
-          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+          sizes={sizes}
         />
       </div>
     );
