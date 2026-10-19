@@ -30,6 +30,7 @@ import {
   verifyTurnstile,
 } from '@/lib/api-guard';
 import { mapPlaceOrderError } from '@/lib/order-errors';
+import { revalidateCatalog } from '@/lib/revalidate';
 import { securityLog } from '@/lib/security-log';
 import { log } from '@/lib/log';
 import {
@@ -299,6 +300,11 @@ export async function POST(req: NextRequest) {
 
   // Log only the order number (no PII).
   log.info('[/api/orders] Order placed:', orderNumber);
+
+  // place_order decremented stock, so the ISR-cached catalogue surfaces are
+  // stale. revalidateCatalog() is sync and never throws: the order is already
+  // placed and must not fail because cache invalidation hiccuped.
+  revalidateCatalog();
 
   return NextResponse.json(
     {

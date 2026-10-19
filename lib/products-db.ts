@@ -61,9 +61,16 @@ function mapRow(row: ProductRow): Product {
   };
 }
 
-export async function getAllProducts(): Promise<Product[]> {
+/**
+ * Status-aware catalogue read. `ok: false` means the DB is configured but the
+ * read failed, so a server-rendered surface can show its error/retry state
+ * instead of mistaking the failure for an intentionally empty collection.
+ * The log messages keep the historical `[getAllProducts]` prefix so operator
+ * runbooks and log greps stay valid.
+ */
+export async function getAllProductsWithStatus(): Promise<{ products: Product[]; ok: boolean }> {
   if (!isServiceConfigured()) {
-    return staticProducts;
+    return { products: staticProducts, ok: true };
   }
 
   try {
@@ -79,14 +86,19 @@ export async function getAllProducts(): Promise<Product[]> {
         '[getAllProducts] Supabase error — returning empty catalogue (DB is the source of truth):',
         error.message
       );
-      return [];
+      return { products: [], ok: false };
     }
 
-    return (data ?? []).map(mapRow);
+    return { products: (data ?? []).map(mapRow), ok: true };
   } catch (e) {
     log.error('[getAllProducts] Supabase fetch failed — returning empty catalogue:', e);
-    return [];
+    return { products: [], ok: false };
   }
+}
+
+/** Rows only — unchanged behaviour for home, product page, /api/products and the sitemap. */
+export async function getAllProducts(): Promise<Product[]> {
+  return (await getAllProductsWithStatus()).products;
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {

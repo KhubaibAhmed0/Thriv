@@ -4,6 +4,7 @@ import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { UpdateProductSchema } from '@/lib/admin-product-schema';
 import { originAllowed, requestId } from '@/lib/api-guard';
 import { writeAudit } from '@/lib/audit';
+import { revalidateCatalog } from '@/lib/revalidate';
 import { securityLog } from '@/lib/security-log';
 import { log } from '@/lib/log';
 
@@ -157,6 +158,10 @@ export async function PATCH(
       after: allowedUpdates,
     });
 
+    // Price/stock/visibility changes must reach the ISR-cached catalogue
+    // surfaces (home, shop, product pages, public API, sitemap) now.
+    revalidateCatalog();
+
     return NextResponse.json({ success: true, product: updated });
   } catch (err) {
     log.error('[/api/admin/products/[id]] Unexpected error:', err);
@@ -258,6 +263,10 @@ export async function DELETE(
       before: { slug: product.slug, objects: paths.length },
       after: null,
     });
+
+    // Drop the deleted piece from the ISR-cached catalogue surfaces (its
+    // product page re-renders to a 404 on the next request).
+    revalidateCatalog();
 
     return NextResponse.json({
       success: true,

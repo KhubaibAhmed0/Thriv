@@ -8,15 +8,18 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { WhatsAppFAB } from '@/components/WhatsAppFAB';
 
+// WOFF2 (subsetted, generated from the original TTFs with fontTools) — the
+// format change cuts first-load font weight ~83% (1,023 KB → 172 KB raw).
+// TTF originals remain in app/fonts/ for rollback.
 const inter = localFont({
-  src: './fonts/Inter-Variable.ttf',
+  src: './fonts/Inter-Variable.woff2',
   display: 'swap',
   variable: '--font-inter',
   weight: '100 900',
 });
 
 const anton = localFont({
-  src: './fonts/Anton-Regular.ttf',
+  src: './fonts/Anton-Regular.woff2',
   display: 'swap',
   variable: '--font-display',
   weight: '400',

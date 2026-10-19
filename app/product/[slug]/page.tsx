@@ -3,15 +3,31 @@ import type { Metadata } from 'next';
 import { getProductBySlug, getAllProducts } from '@/lib/products-db';
 import { ProductDetailClient } from '@/components/ProductDetailClient';
 
-// Always render from the database: price, stock and visibility changes must
-// reach product pages immediately (audit F-17). Build-time snapshots let
-// stale prices and sold-out items stay shoppable indefinitely.
-export const dynamic = 'force-dynamic';
+// Audit F-17: the DB is the single source of truth, so price, stock and
+// visibility changes must reach product pages promptly. Pages are served from
+// an ISR cache with a 60s cap, and every catalogue mutation revalidates them
+// on demand via lib/revalidate.ts — admin edits and order-driven stock changes
+// land on the next request. Edits that bypass the app (Supabase Studio) heal
+// within the window, and checkout still validates price + stock server-side
+// inside the place_order RPC, so a stale page can never sell a sold-out piece.
+export const revalidate = 60;
 
 interface ProductPageProps {
   params: Promise<{
     slug: string;
   }>;
+}
+
+/**
+ * Pre-render every active product at build time. New pieces (and pieces
+ * hidden at build time) render on demand and are cached the same way —
+ * dynamicParams keeps its default. getAllProducts() returns [] instead of
+ * throwing on a DB error, so a build without DB access degrades to
+ * on-demand ISR rather than failing.
+ */
+export async function generateStaticParams() {
+  const products = await getAllProducts();
+  return products.map((product) => ({ slug: product.slug }));
 }
 
 export async function generateMetadata({

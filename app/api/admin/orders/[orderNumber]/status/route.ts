@@ -4,6 +4,7 @@ import { verifyAdminRequest } from '@/lib/admin-auth';
 import { getServiceClient, isServiceConfigured } from '@/lib/supabase-server';
 import { originAllowed, requestId } from '@/lib/api-guard';
 import { writeAudit } from '@/lib/audit';
+import { revalidateCatalog } from '@/lib/revalidate';
 import { securityLog } from '@/lib/security-log';
 import { log } from '@/lib/log';
 
@@ -131,6 +132,11 @@ export async function PATCH(
         before: { status: currentOrder.status },
         after: { status },
       });
+
+      // update_order_status() is the only writer of stock effects (e.g. a
+      // cancellation restores stock), so the ISR-cached catalogue surfaces
+      // are stale after a successful transition — refresh them now.
+      revalidateCatalog();
     }
 
     // 3. Payment status is independent of fulfillment state.

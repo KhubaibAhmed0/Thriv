@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { getAllProducts } from '@/lib/products-db';
 import { errorMessage } from '@/lib/errors';
 
-export const dynamic = 'force-dynamic';
+// Static GET cached with ISR. Catalogue mutations invalidate it on demand
+// (lib/revalidate.ts); direct DB edits heal within the 60s window.
+export const revalidate = 60;
 
 export async function GET() {
   try {

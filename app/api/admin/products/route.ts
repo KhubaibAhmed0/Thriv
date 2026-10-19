@@ -12,6 +12,7 @@ import {
 } from '@/lib/admin-product-schema';
 import { originAllowed, requestId } from '@/lib/api-guard';
 import { writeAudit } from '@/lib/audit';
+import { revalidateCatalog } from '@/lib/revalidate';
 import { securityLog } from '@/lib/security-log';
 import { log } from '@/lib/log';
 
@@ -371,6 +372,10 @@ export async function POST(req: NextRequest) {
         photos: uploadedPaths.length,
       },
     });
+
+    // The row is committed — refresh the ISR-cached catalogue surfaces
+    // (home, shop, product pages, public API, sitemap).
+    revalidateCatalog();
 
     return NextResponse.json({ success: true, product: newProduct });
   } catch (err) {

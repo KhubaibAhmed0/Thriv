@@ -6,7 +6,11 @@ import { HomeMedia } from '@/components/home/HomeMedia';
 import { HomeEditorial } from '@/components/home/HomeEditorial';
 import { HomeProductCard } from '@/components/home/HomeProducts';
 
-export const revalidate = 0;
+// Audit F-17: the home page renders the live DB catalogue from an ISR cache
+// (60s cap) and catalogue mutations revalidate it on demand (lib/revalidate.ts),
+// so price/stock/visibility changes land on the next request; edits that bypass
+// the app (Supabase Studio) heal within the window.
+export const revalidate = 60;
 export const metadata = {
   title: 'thriv | Curated Thrift Jeans & Anime Graphic Tees · Pakistan',
   description: 'One-of-one branded denim and in-house anime graphic tees. Handpicked, disinfected, and shipped from Karachi with flat Rs 200 nationwide delivery.',

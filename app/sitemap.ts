@@ -2,8 +2,9 @@ import type { MetadataRoute } from 'next';
 import { getAllProducts } from '@/lib/products-db';
 import { SITE_URL } from '@/lib/site-url';
 
-// Render on request so newly added pieces appear without a redeploy.
-export const dynamic = 'force-dynamic';
+// Cached for an hour and invalidated on demand after catalogue mutations
+// (lib/revalidate.ts), so newly added pieces still appear without a redeploy.
+export const revalidate = 3600;
 
 const BASE_URL = SITE_URL;
 

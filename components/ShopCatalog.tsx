@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowUpRight, ChevronDown, Heart, Search, SlidersHorizontal, X } from 'lucide-react';
@@ -15,15 +15,37 @@ const categories = [
 ];
 const fitLabel = (value: string) => value.replaceAll('-', ' ');
 
-export function ShopCatalog() {
-  const router = useRouter();
+/**
+ * The shop shell is prerendered, so the build cannot know the query string.
+ * `useSearchParams()` bails out to client rendering during prerender and would
+ * replace the whole catalogue in the static HTML with the page's Suspense
+ * fallback (measured: pieces only appeared after the client fetch). Reading the
+ * query in this small bridge — inside its own Suspense boundary — keeps the
+ * product grid prerendered: the shell shows the full collection immediately and
+ * filtered URLs refine in place once React is running, at the cost of one
+ * unfiltered frame on those URLs.
+ */
+function SearchParamsBridge({ onChange }: { onChange: (search: string) => void }) {
   const searchParams = useSearchParams();
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const search = searchParams?.toString() ?? '';
+  useEffect(() => { onChange(search); }, [onChange, search]);
+  return null;
+}
+
+export function ShopCatalog({ initialProducts, initialError }: { initialProducts: Product[]; initialError: boolean }) {
+  const router = useRouter();
+  const [search, setSearch] = useState('');
+  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>(initialError ? 'error' : 'ready');
   const [attempt, setAttempt] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
 
+  // Retry only. The catalogue itself arrives from the server component, so
+  // there is no fetch on mount (attempt 0); "Try again" re-reads the now
+  // cacheable /api/products endpoint.
   useEffect(() => {
+    if (attempt === 0) return;
     const controller = new AbortController();
     fetch('/api/products', { signal: controller.signal })
       .then(async (response) => {
@@ -88,6 +110,9 @@ export function ShopCatalog() {
 
   return (
     <div className={`${styles.catalog} home-container`}>
+      <Suspense fallback={null}>
+        <SearchParamsBridge onChange={setSearch} />
+      </Suspense>
       <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
         <Link href="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Shop</span>
       </nav>
