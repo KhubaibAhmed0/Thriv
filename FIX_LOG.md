@@ -604,3 +604,49 @@ Operational notes:
 **One owner action remains for customer delivery:** verify a sending domain in Resend (resend.com/domains → add domain → copy the SPF/DKIM DNS records into the domain's DNS). Resend rejects every send to a customer address until then — only the account's own inbox can receive mail. When the domain shows **Verified**, set `RESEND_FROM_EMAIL` (e.g. `Thriv <orders@thriv.pk>`) in Vercel and redeploy: emails start flowing, and the confirmation copy flips to "a receipt is on its way" automatically.
 
 **Notes:** until the domain is verified, customer sends are attempted and rejected (403, logged) — orders are unaffected. Test order THR-00016 remains as cancelled (same policy as THR-00009–00015). The `order_events.created_by` cleanup quirk was confirmed again: null it before deleting an admin user, or Supabase Auth returns 500.
+
+---
+
+## Batch B10 — Performance: cacheable catalogue, SSR shop, WOFF2 fonts, sin1 functions (owner request, 2026-10-19)
+
+**Request:** full production performance audit, then a plan; owner approved deploying the first phases — "deploy to production then measure the times".
+
+**What was wrong (audited 2026-10-18, production, from Karachi):** zero caching anywhere — home SSR on every request (`revalidate = 0`, no-store, 1.29 s TTFB, always MISS); product pages `force-dynamic` with two DB queries per view (1.6–2.6 s); `/api/products` `force-dynamic` (1.38 s median — the endpoint the shop's client waterfall waited on); functions running in `iad1` (US-East) while the database lives in `ap-southeast-1` (Singapore) and users are nearest `bom1` — every dynamic request paid two intercontinental hops. Raw TTF fonts were ~70% of first-visit wire weight (Inter 876 KB + Anton 171 KB ≈ 1,023 KB).
+
+**Changes (commit `acfe331`, deployed via `vercel --prod` CLI):**
+
+- **ISR where safe:** `revalidate = 60` on `/`, `/product/[slug]` (now `generateStaticParams` for all 31 products) and `GET /api/products`; sitemap hourly. Only `/api/orders/[publicToken]` stays `force-dynamic`.
+- **New `lib/revalidate.ts` — `revalidateCatalog()`:** on-demand invalidation of `/`, `/shop`, `/product/[slug]` (all), `/api/products`, `/sitemap.xml`. Called after every catalogue-affecting mutation: admin product create/update/delete, order-status transitions (`update_order_status` stock effects) and successful `place_order` (stock decrement). Audit F-17/F-18 freshness preserved: mutations land on the next request; edits that bypass the app (Studio/psql) heal within the 60 s window; `place_order` still validates price + stock server-side.
+- **`/shop` server-rendered:** the catalogue is baked into the prerendered HTML (113 KB, all 31 pieces) — the shell → JS → `/api/products` fetch waterfall is gone. A `SearchParamsBridge` (its own Suspense boundary) keeps the `useSearchParams()` client-bailout off the product grid, so the grid prerenders; filters refine in place after hydration (cost: one unfiltered frame on filtered URLs). Client retry path kept for the error state.
+- **Fonts:** TTF → subsetted WOFF2 via fontTools (Inter 876 KB → 144 KB; Anton 171 KB → 32 KB; −83% combined); `next/font/local` updated; preloads render on home and shop.
+- **Region:** `vercel.json` → `"regions": ["sin1"]` — functions co-located with Supabase. Runbook + helper: `docs/perf/region-ab.md`, `scripts/perf/region-ab.ps1`.
+
+**Measured — production, Karachi, same methodology as the audit (4 runs; TTFB):**
+
+| Route | Before (2026-10-18) | After (2026-10-19) |
+| :--- | :--- | :--- |
+| `/` | 1.29 s, MISS, no-store | **0.26–0.30 s steady-state HIT** (ISR 60 s; first two runs 0.59/0.72 s network warm-up) |
+| `/shop` (pieces visible) | 1.6–2.2 s (client fetch) | **in the first HTML** — 31 pieces baked in; TTFB 0.25–0.29 s |
+| `/product/[slug]` | 1.6–2.6 s, MISS | **0.26–0.41 s HIT** (runs 3–4 show background revalidation in `bom1::sin1`) |
+| `/api/products` | 1.38 s median, MISS | **0.28–0.36 s HIT** |
+| `/cart` (static control) | 0.33–0.36 s | 0.28–0.33 s (unchanged — catalogue now sits at the static edge floor) |
+| `/order/*` (DB-bound dynamic) | dynamic MISS class | **0.33–0.37 s, function in `sin1`** (region move live) |
+| 404 (unknown route) | ~1.0 s anomaly | **0.24–0.28 s HIT** (prerendered static) |
+
+**Verification:**
+
+| Check | Result |
+| :--- | :--- |
+| Local: `tsc --noEmit`, `eslint`, `next build` | ✓ clean; route table ISR/SSG exactly as intended (57 pages) |
+| Local prod server (`next start`) | ✓ all catalogue routes HIT + `s-maxage=60`; `/shop` serves 113 KB with all 31 products |
+| Production curl matrix | ✓ the table above |
+| Production browser (real Chrome, shop) | ✓ hydration clean (0 console errors); `31 pieces` → click Denim → `/shop?category=jeans`, `27 pieces`, aria state correct; custom fonts loaded; cold tab load ≈ 0.8 s |
+| Fonts served | ✓ `200`, `font/woff2`, 144,440 B, `immutable` |
+| Deploy | `vercel --prod` → READY, aliased to `thriv-five.vercel.app` |
+
+**Notes / open items:**
+
+- The region A/B (`sin1` vs `bom1`) second leg was **not run**: with the catalogue edge-cached and remaining dynamic routes DB-bound, `sin1` answers a fresh DB-backed function request in ~0.34 s from Karachi (same order as the ~0.32 s static floor); rationale recorded in `docs/perf/region-ab.md §7.5`. Flip `vercel.json` to `["bom1"]` if a formal counter-measurement is ever wanted — one-line revert, procedure in the doc.
+- **Contract for future work:** any new endpoint that mutates products or stock **must** call `revalidateCatalog()` after success, or ISR will serve stale data for up to 60 s.
+- One live check remains owner-side (no code impact): an admin product edit should now appear on `/`, its product page and `/api/products` within seconds.
+- Phase 5 (image pipeline: resize >1600 px uploads, grid `sizes` fix) and the Instagram → listing workflow remain open from the plan.

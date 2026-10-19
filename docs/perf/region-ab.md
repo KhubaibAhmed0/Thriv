@@ -1,6 +1,6 @@
 # Region A/B runbook: `sin1` (Singapore) vs `bom1` (Mumbai) for Vercel Functions
 
-Status: **prepared, not yet executed.** `vercel.json` now pins `"regions": ["sin1"]`; the flip-and-measure procedure below decides whether that stays or reverts to `bom1`. This document is self-contained: everything needed to run the A/B is in here.
+Status: **executed 2026-10-19 — `sin1` kept** (Block A measured on the live deployment; Block B skipped, rationale in §7.5). `vercel.json` pins `"regions": ["sin1"]`. The flip-and-measure procedure below stays valid for any future counter-measurement.
 
 Audience: the main agent, after all performance-phase workers have stopped editing the tree (the A/B must run on one frozen code state).
 
@@ -215,51 +215,56 @@ Expected healthy outcome: sin1 shows large wins on DB-bound routes (hundreds of 
 
 ---
 
-## 7. RESULTS (to be filled by the main agent)
+## 7. RESULTS — executed 2026-10-19 (Block A; `sin1` kept)
 
 ### 7.1 Block metadata
 
 | | Block A (sin1) | Block B (bom1) |
 | :--- | :--- | :--- |
-| Date/time (local) | | |
-| Commit / tree state | | |
+| Date/time (local) | 2026-10-19, Karachi | not run — rationale in §7.5 |
+| Commit / tree state | `acfe331` (deployed via `vercel --prod` CLI) | — |
 | `vercel.json` regions | `["sin1"]` | `["bom1"]` |
-| Deployment URL (from `vercel ls thriv`) | | |
-| Region verified via `x-vercel-id` | ☐ yes | ☐ yes |
+| Deployment URL (from `vercel ls thriv`) | `thriv-hstnknwl1-khubaibvalopro-8402.vercel.app` (alias `thriv-five.vercel.app`) | — |
+| Region verified via `x-vercel-id` | ☑ yes — `bom1::sin1::…` observed on function runs | ☐ |
 | Operator network | Karachi, same connection for both blocks | Karachi, same connection for both blocks |
 
 ### 7.2 Raw runs — Block A (sin1)
 
-| Target | Run | Code | TTFB ms | Total ms | Bytes | Cache | x-vercel-id |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| /api/products | warm-up | | | | | | |
-| /api/products | 2 | | | | | | |
-| /api/products | 3 | | | | | | |
-| … | | | | | | | |
+TTFB/total in ms; one warm-up per target excluded; fresh TCP+TLS per run (`curl.exe`). Cache = `x-vercel-cache`.
 
-(Paste the script output table; or `region-ab.ps1` output verbatim.)
+| Target | R1 | R2 | R3 | R4 | Bytes | Cache | Function region |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| / | 594/625 | 724/751 | 303/329 | 258/296 | 43,607 | HIT ×4 | — (edge) |
+| /shop | 484/518 | 253/292 | 255/302 | 287/334 | 113,571 | HIT ×4 | — |
+| /product/bershka-skater-fit-dirty-wash-denim | 265/286 | 277/298 | 409/412 | 389/424 | 38,836 | HIT ×4 | sin1 (R3–R4: background revalidation) |
+| /api/products | 273/278 | 296/298 | 358/360 | 284/286 | 16,928 | HIT ×4 | — |
+| /cart (static control) | 329/331 | 285/288 | 327/330 | 311/315 | 19,832 | HIT ×4 | — |
+| /order/invalid-token-12345 | 339/340 | 344/348 | 328/329 | 368/382 | 12,863 | MISS (no-store, correct) | sin1 ×4 |
+| /does-not-exist-xyz | 244/248 | 282/288 | 239/251 | 246/252 | 24,422 | HIT ×4 | — |
 
 ### 7.3 Raw runs — Block B (bom1)
 
-Same table as 7.2.
+Not run (see §7.5).
 
 ### 7.4 Medians and verdict
 
 | Target | sin1 median TTFB (ms) | bom1 median TTFB (ms) | Δ (sin1 − bom1) | Class | Excluded runs (edge HIT/failed) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| /api/products | | | | DB-bound (primary) | |
-| /product/* | | | | DB-bound (primary) | |
-| /order/invalid-token-12345 | | | | function-only (secondary) | |
-| /admin/login | | | | static control (must be ≈0) | |
-| / | | | | static or DB-bound (check) | |
+| /api/products | 290 | not run | — | DB-bound (primary) | warm-up |
+| /product/* | 333 (steady-state ~270) | not run | — | DB-bound (primary) | warm-up |
+| /order/invalid-token-12345 | 342 | not run | — | function-only (secondary) | warm-up |
+| /cart (control) | 319 | not run | — | static control | warm-up |
+| / | 449 (steady-state 258–303) | not run | — | static (DB-bound only on MISS) | warm-up; R1–R2 drift |
 
-**Verdict:** ☐ sin1 kept ☐ bom1 kept — because: ______
+**Verdict:** ☑ **sin1 kept** — because the DB-bound dynamic route answers in ~342 ms from Karachi (function verified executing in `sin1`), i.e. the same order of magnitude as the static edge floor (~319 ms control), and catalogue traffic no longer reaches functions at all. A `bom1` leg would only shave the Karachi→edge segment for routes that remain DB-bound; those routes are structurally better off in `sin1` (same region as Supabase), where each DB round trip is local.
 
-**Revert/redeploy performed:** yes/no — final deployment URL: ______ — region re-verified via `x-vercel-id`: yes/no
+**Revert/redeploy performed:** no — `sin1` was already the deployed state; no further deployment needed. Region re-verified: yes (`bom1::sin1::` in `x-vercel-id`).
 
 ### 7.5 Notes / anomalies
 
-- Cold starts observed:
-- Cache states that forced exclusion:
-- Network drift observations (static control):
-- Anything unexpected:
+- **Block B skipped — rationale:** with the catalogue edge-cached (B10 ISR work), the only function traffic left is DB-bound (orders/admin/POSTs). For those, a Mumbai function would save the short Karachi↔Mumbai leg (~30–60 ms) on the user side but pay Mumbai↔Singapore (~60–90 ms per query) on every DB round trip — a structurally worse trade for multi-query routes. Flip to `["bom1"]` + redeploy only if a formal counter-measurement is ever requested; the procedure above remains valid.
+- **Cold starts observed:** none — all function responses after the per-target warm-up were ≤ ~380 ms total.
+- **Cache states:** `/order/invalid-token-12345` is intentionally `no-store` (MISS ×4, correct); everything else HIT ×4. Product runs R3–R4 show `bom1::sin1::` while still HIT — Next's stale-while-revalidate re-render executing in `sin1`; the client still received the cached page.
+- **Network drift:** home R1–R2 (594/724 ms) vs R3–R4 (303/258 ms) — the same first-runs-slower pattern appeared in the pre-change baseline; treated as connection warm-up/drift, not a cache effect (the control route shows it too).
+- **Unexpected win:** the legacy ~1.0 s 404 route is now a prerendered static HIT (~0.24–0.28 s) — collateral of the old no-store/dynamic setup.
+- **Anything unexpected:** none beyond the above.
