@@ -1,0 +1,161 @@
+{
+  "batch": "2026-10-21-website-images",
+  "note": "Every image file in the owner's 'Thriv Website images' pack becomes its own live listing. Product name = file name without extension. Prices, stock, sizes and descriptions are placeholders.",
+  "brand": "Thriv",
+  "description": "Placeholder listing imported from the website image pack. Final description, materials and pricing are coming soon.",
+  "items": [
+    {
+      "file": "Graphic Tees/Demon Slayer/Tanjiro Kamado Anime Graphic Tee.png",
+      "name": "Tanjiro Kamado Anime Graphic Tee",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Graphic Tees/Demon Slayer/Tanjiro Anime Graphic Tee Studio Shot.png",
+      "name": "Tanjiro Anime Graphic Tee Studio Shot",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Graphic Tees/Demon Slayer/Minimalist Demon Slayer Studio Portrait.png",
+      "name": "Minimalist Demon Slayer Studio Portrait",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Graphic Tees/Demon Slayer/Minimalist Back View Fashion Portrait.png",
+      "name": "Minimalist Back View Fashion Portrait",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Graphic Tees/One Piece/Luffy Anime Graphic Tee Studio Portrait.png",
+      "name": "Luffy Anime Graphic Tee Studio Portrait",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Graphic Tees/One Piece/Luffy Rising Sun Graphic Tee.png",
+      "name": "Luffy Rising Sun Graphic Tee",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Graphic Tees/One Piece/Minimalist One Piece Streetwear Portrait.png",
+      "name": "Minimalist One Piece Streetwear Portrait",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Graphic Tees/Tanjiro Kamado Water Breathing Sticker.png",
+      "name": "Tanjiro Kamado Water Breathing Sticker",
+      "category": "graphic-tees",
+      "subcategory": "stickers",
+      "price": 999,
+      "stock": 25,
+      "sizes": ["One size"]
+    },
+    {
+      "file": "Hero Section/Cool Streetwear Portrait on Green Ledge.png",
+      "name": "Cool Streetwear Portrait on Green Ledge",
+      "category": "graphic-tees",
+      "subcategory": "full-looks",
+      "price": 2299,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Section 2/Luffy Rising Sun Graphic Tee.png",
+      "name": "Luffy Rising Sun Graphic Tee",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Section 2/Oversized Gray Sweatshirt and Distressed Jeans.png",
+      "name": "Oversized Gray Sweatshirt and Distressed Jeans",
+      "category": "jeans",
+      "subcategory": "vintage-wash",
+      "price": 2499,
+      "stock": 10,
+      "sizes": ["30", "32", "34", "36"]
+    },
+    {
+      "file": "Section 2/Urban Color-Block Sweater Portrait.png",
+      "name": "Urban Color-Block Sweater Portrait",
+      "category": "graphic-tees",
+      "subcategory": "sweatshirts",
+      "price": 2199,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Section 3 Cards/Card 1 - Sweatshirts.png",
+      "name": "Card 1 - Sweatshirts",
+      "category": "graphic-tees",
+      "subcategory": "sweatshirts",
+      "price": 2199,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Section 3 Cards/Card 2 - Jeans.png",
+      "name": "Card 2 - Jeans",
+      "category": "jeans",
+      "subcategory": "baggy",
+      "price": 2499,
+      "stock": 10,
+      "sizes": ["30", "32", "34", "36"]
+    },
+    {
+      "file": "Section 3 Cards/Card 3 - Graphic Tees.png",
+      "name": "Card 3 - Graphic Tees",
+      "category": "graphic-tees",
+      "subcategory": "anime-tees",
+      "price": 1999,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Section 4/Brooding Striped Sweater Portrait.png",
+      "name": "Brooding Striped Sweater Portrait",
+      "category": "graphic-tees",
+      "subcategory": "sweatshirts",
+      "price": 2199,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    },
+    {
+      "file": "Section 5/Relaxed Henley Streetwear Model Cutout.png",
+      "name": "Relaxed Henley Streetwear Model Cutout",
+      "category": "graphic-tees",
+      "subcategory": "sweatshirts",
+      "price": 2199,
+      "stock": 10,
+      "sizes": ["S", "M", "L", "XL"]
+    }
+  ]
+}

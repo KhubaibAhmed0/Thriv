@@ -692,3 +692,35 @@ Operational notes:
 - Vercel Hobby includes 5,000 image transformations/month and the CDN caches each variant for a year, so a 31-product catalogue needs roughly 310 one-time transformations (~16x headroom). Exceeding the quota would make images fail, not just slow down - revisit if the catalogue grows by an order of magnitude.
 - Any future image writer (seed script, service-role import) must apply the same resize before upload; the cap lives only in the admin POST route today.
 - **Open gap found during this batch:** `PATCH /api/admin/products/[id]` accepts JSON metadata only (price/stock/visibility/name/etc.) and there is **no product edit page**, so photos cannot be attached to the 31 existing products through the admin UI. They can only be set at creation. A small script or a multipart PATCH + edit form is needed before the existing catalogue can receive photos.
+
+---
+
+## Batch B12 - Website image pack imported as live listings (owner request, 2026-10-21)
+
+**Request:** the owner dropped a folder of generated website imagery and asked for the items to become catalogue entries, named after their files, with placeholder prices and descriptions.
+
+**What was done:**
+
+- Added `scripts/import-product-images.mjs` - a reusable importer. It reads a manifest, runs every photo through the same sharp chain as the admin upload (`rotate` -> cap 1600x2000 -> WebP q82), uploads to `products/imports/<batch>/<uuid>.webp`, inserts a product row with a unique slug, and writes a rollback record (`scripts/imports/result-*.json`, gitignored). `--dry-run` validates without writing. This also closes the "photos can only be attached at creation" gap for programmatic imports.
+- Added `scripts/imports/website-images-2026-10-21.json` - 17 entries, one per file in the owner's pack. Product name = file name without extension. Category uses the existing taxonomy (`jeans` for the two denim shots, `graphic-tees` for everything else); subcategory carries the real type (`anime-tees`, `stickers`, `sweatshirts`, `full-looks`, `baggy`, `vintage-wash`).
+- Dummy data: prices Rs 999-2,499, stock 10 (sticker 25), sizes S-XL (jeans 30-36, sticker "One size"), descriptions "Placeholder listing imported from the website image pack...".
+- All 17 are **live** (`is_active = true`) per the owner's choice.
+
+**Verification:**
+
+| Check | Result |
+| :--- | :--- |
+| Dry run | 17/17 files found; 35.8 MB of PNGs -> 2.49 MB of WebP (-93%) |
+| Live import | 17/17 inserted, 0 failures; active products 31 -> **48** |
+| `/shop` after ISR | **48 pieces**, 48 unique product links, 197 `/_next/image` references |
+| Category counts | All 48 / Denim 29 / Graphic tees 19 |
+| Browser (shop) | 17/17 photos load, 0 broken, 0 console errors |
+| Browser (PDP) | Tanjiro, Luffy, sticker ("One size"), jeans (30-36) all render with add-to-cart |
+| Images served | optimized `/_next/image` AVIF/WebP variants, not originals |
+
+**Notes / open items:**
+
+- Two files share the name "Luffy Rising Sun Graphic Tee" (one in `Graphic Tees/One Piece`, one in `Section 2`, byte-identical). Per the owner's "every file" choice both became listings; slugs are `luffy-rising-sun-graphic-tee` and `-2`. Delete one later if the duplicate card is unwanted.
+- The sweatshirt/henley/full-look photos live under `graphic-tees` because the catalogue still only has `jeans` and `graphic-tees`. A `sweatshirts` category is a small change if the taxonomy should match.
+- The first shop screen can still show grey placeholder tiles: the existing 31 thrift pieces have no photos yet and the default sort is "Featured & newest".
+- **Prices/descriptions cannot be edited in the admin UI** (no product edit page; PATCH accepts price/name/stock/visibility but not description). Until an edit form exists, the practical path for the owner's next pass is a bulk-update script driven by a manifest.

@@ -45,3 +45,6 @@ graphify-out/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated rollback records from scripts/import-product-images.mjs
+scripts/imports/result-*.json
