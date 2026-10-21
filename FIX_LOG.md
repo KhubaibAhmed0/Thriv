@@ -724,3 +724,41 @@ Operational notes:
 - The sweatshirt/henley/full-look photos live under `graphic-tees` because the catalogue still only has `jeans` and `graphic-tees`. A `sweatshirts` category is a small change if the taxonomy should match.
 - The first shop screen can still show grey placeholder tiles: the existing 31 thrift pieces have no photos yet and the default sort is "Featured & newest".
 - **Prices/descriptions cannot be edited in the admin UI** (no product edit page; PATCH accepts price/name/stock/visibility but not description). Until an edit form exists, the practical path for the owner's next pass is a bulk-update script driven by a manifest.
+
+---
+
+## Batch B13 - website image pack placed into homepage sections (owner request, 2026-10-21)
+
+**Request:** the image pack is organised as `Hero Section`, `Section 2`, `Section 3 Cards`, `Section 4`, `Section 5`. Put each photo into its matching homepage section, and take the nine section images back out of the shop.
+
+**What was done:**
+
+- Removed the nine section-art listings (`cool-streetwear-portrait-on-green-ledge`, the Section 2 duplicate `luffy-rising-sun-graphic-tee-2`, `oversized-gray-sweatshirt-and-distressed-jeans`, `urban-color-block-sweater-portrait`, `card-1-sweatshirts`, `card-2-jeans`, `card-3-graphic-tees`, `brooding-striped-sweater-portrait`, `relaxed-henley-streetwear-model-cutout`). Their rows and storage objects were deleted using the B12 rollback record. The seven anime tees and the Tanjiro sticker stay live.
+- Encoded the nine section photos to `public/images/home/*.webp` (resized, WebP q84): **1.03 MB total**. The hero (1254x1254) and Section 5 (800x1200) keep their alpha channel and render as cutouts.
+- Built the missing homepage sections in folder order:
+  1. **Hero Section** - the cutout sits on the existing denim/circle art; the CTA moved onto the concrete block (mobile: below the photo).
+  2. **Section 2** - `HomeEdit`, a staggered three-up edit using the three photos.
+  3. **Section 3 Cards** - `HomeCategories`, three category cards.
+  4. **Section 4** - `HomeStatement`, a dark "Layer up." feature.
+  5. **Section 5** - `HomeLook`, a light cutout panel closing the page ("The daily rotation.").
+- The catalogue grid stays between Section 3 and Section 4. The old placeholder editorial and campaign blocks are no longer rendered; their components and data slots remain in the repo.
+- `selectHomeProducts()` now fills the homepage grid with photographed products first; the five legacy featured slugs only win when they actually have an image.
+- Section 3's first card is labelled **Layers** (not "Sweatshirts") because no sweatshirts remain for sale; it links to the full shop instead of a dead category. The other cards link to `/shop?category=jeans` and `/shop?category=graphic-tees`.
+
+**Verification:**
+
+| Check | Result |
+| :--- | :--- |
+| Catalogue after removal | **39 active products**, 39 product pages; the 9 former URLs and storage objects removed |
+| Section assets | 9 WebPs, **1.03 MB** total; hero 1254x1254 alpha, Section 5 800x1200 alpha |
+| Desktop 1440x900 | 14/14 images loaded, 0 broken, 0 console errors, no horizontal overflow; section heights: hero 790, edit 1019, categories 816, collection 1638, statement 962, look 916 |
+| Mobile 390x844 | 14/14 images loaded, 0 broken, 0 console errors, no horizontal overflow; rails inset 20px, CTA below the hero photo |
+| Image delivery | all 14 photos through `/_next/image`; no originals served |
+| Gates | `tsc --noEmit`, `eslint`, `next build` clean |
+
+**Notes / open items:**
+
+- Prices and descriptions on the eight kept anime listings are still placeholders; the admin UI cannot edit descriptions.
+- The shop's default sort can still lead with the 31 legacy thrift items, which have no photos. The homepage no longer opens on grey tiles.
+- The site now has a `public/` folder. Future static artwork goes in `public/images/home/` and must be resized/WebP-encoded before committing (the current nine-image pack is 1.03 MB).
+- Deploy from a clean worktree until the parallel shop redesign is committed; otherwise `vercel --prod` would ship that uncommitted work.
