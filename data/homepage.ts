@@ -102,17 +102,26 @@ export const homeProductSlugs = [
   'evangelion-unit-01-schematic-tee',
 ];
 
+// B12 imported the website image pack as live listings. These two are art
+// placeholders rather than wearable pieces, so they stay off the homepage
+// grid even though they have photographs.
+const homeGridExclusions = new Set([
+  'tanjiro-kamado-water-breathing-sticker',
+  'minimalist-one-piece-streetwear-portrait',
+]);
+
 export function selectHomeProducts(products: Product[]): Product[] {
   // The five featured slugs are legacy thrift pieces without photos. Prefer
   // them only when they actually have an image, then fill the grid with the
   // newest photographed pieces so the homepage never opens on grey tiles.
+  const catalogue = products.filter((product) => !homeGridExclusions.has(product.slug));
   const preferred = homeProductSlugs.flatMap((slug) => {
-    const product = products.find((item) => item.slug === slug);
+    const product = catalogue.find((item) => item.slug === slug);
     return product && product.images.length > 0 ? [product] : [];
   });
   const chosen = new Set(preferred.map((product) => product.id));
-  const withImages = products.filter((product) => product.images.length > 0 && !chosen.has(product.id));
-  const rest = products.filter((product) => product.images.length === 0 && !chosen.has(product.id));
+  const withImages = catalogue.filter((product) => product.images.length > 0 && !chosen.has(product.id));
+  const rest = catalogue.filter((product) => product.images.length === 0 && !chosen.has(product.id));
   return [...preferred, ...withImages, ...rest].slice(0, 5);
 }
 
