@@ -51,7 +51,7 @@ export default async function HomePage() {
       <HomeCategories />
       <section className="home-collection home-container" aria-labelledby="collection-heading">
         <h2 id="collection-heading" className="home-display">Explore products</h2>
-        {collection.length ? <div className="home-product-grid">{collection.map((product, index) => <HomeProductCard key={product.id} product={product} wide={index === 0} />)}</div> : <p className="home-empty">The next collection is on its way. Visit the shop for availability.</p>}
+        {collection.length ? <div className="home-product-grid">{collection.map((product) => <HomeProductCard key={product.id} product={product} />)}</div> : <p className="home-empty">The next collection is on its way. Visit the shop for availability.</p>}
         <Link href="/shop" className="home-button home-button-soft">Shop More <ArrowUpRight size={16} /></Link>
       </section>
       <HomeStatement />

@@ -25,8 +25,8 @@ function Swatches({ product }: { product: Product }) {
   return <div className="home-swatches" aria-label="Product colours">{product.colors.map((color) => <span key={color} style={{ backgroundColor: color }} role="img" aria-label={`Colour ${color}`} />)}</div>;
 }
 
-export function HomeProductCard({ product, wide = false }: { product: Product; wide?: boolean }) {
-  return <article className={`home-product ${wide ? 'home-product-wide' : ''}`}>
+export function HomeProductCard({ product }: { product: Product }) {
+  return <article className="home-product">
     <div className="home-product-panel">
       <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`}><HomeMedia asset={productAsset(product)} label="Product photograph" sizes="(max-width: 767px) 50vw, (max-width: 1328px) 33vw, 440px" /></Link>
       <SaveProduct product={product} />

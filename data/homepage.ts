@@ -94,26 +94,28 @@ export const homeCategoryCards: HomeCategoryCard[] = [
   },
 ];
 
+// The homepage "Explore products" row is a fixed three-up grid. These are the
+// pieces it shows, in this order; every other listing stays on /shop.
 export const homeProductSlugs = [
-  'zara-wide-leg-vintage-wash-denim',
-  'akira-neo-tokyo-cyberpunk-tee',
-  'bershka-baggy-carpenter-jeans',
-  'calvin-klein-straight-cut-indigo-jeans',
-  'evangelion-unit-01-schematic-tee',
+  'minimalist-back-view-fashion-portrait',
+  'minimalist-demon-slayer-studio-portrait',
+  'tanjiro-anime-graphic-tee-studio-shot',
 ];
 
-// B12 imported the website image pack as live listings. These two are art
-// placeholders rather than wearable pieces, so they stay off the homepage
-// grid even though they have photographs.
+// Listings that never reach the grid: the two B12 art placeholders, and the two
+// Luffy tee listings — the same print already leads the edit strip and the
+// graphic-tee card above the grid, so a third showing reads as a duplicate.
 const homeGridExclusions = new Set([
   'tanjiro-kamado-water-breathing-sticker',
   'minimalist-one-piece-streetwear-portrait',
+  'luffy-rising-sun-graphic-tee',
+  'luffy-anime-graphic-tee-studio-portrait',
 ]);
 
 export function selectHomeProducts(products: Product[]): Product[] {
-  // The five featured slugs are legacy thrift pieces without photos. Prefer
-  // them only when they actually have an image, then fill the grid with the
-  // newest photographed pieces so the homepage never opens on grey tiles.
+  // The grid slugs win when they are in the catalogue with a photo. If one is
+  // missing, the newest photographed piece takes its place so the row never
+  // opens on a grey tile.
   const catalogue = products.filter((product) => !homeGridExclusions.has(product.slug));
   const preferred = homeProductSlugs.flatMap((slug) => {
     const product = catalogue.find((item) => item.slug === slug);
@@ -122,7 +124,8 @@ export function selectHomeProducts(products: Product[]): Product[] {
   const chosen = new Set(preferred.map((product) => product.id));
   const withImages = catalogue.filter((product) => product.images.length > 0 && !chosen.has(product.id));
   const rest = catalogue.filter((product) => product.images.length === 0 && !chosen.has(product.id));
-  return [...preferred, ...withImages, ...rest].slice(0, 5);
+  // One card per grid slug: a single row of three at desktop.
+  return [...preferred, ...withImages, ...rest].slice(0, homeProductSlugs.length);
 }
 
 export function productAsset(product: Product): HomeAsset {
